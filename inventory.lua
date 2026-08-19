@@ -146,9 +146,15 @@ function Inventory:updateMetadata()
 
     self.inventory_size = self.interface.size()
 
+    local functions = {}
+
     for slot_id = 1, self.inventory_size do
-        self.slot_sizes[slot_id] = self.interface.getItemLimit(slot_id) / 64
+        table.insert(functions, function()
+            self.slot_sizes[slot_id] = self.interface.getItemLimit(slot_id) / 64
+        end)
     end
+
+    parallel.waitForAll(table.unpack(functions))
 end
 
 ---@param remote Inventory inventory object to push items to
