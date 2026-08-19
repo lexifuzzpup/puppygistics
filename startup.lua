@@ -58,6 +58,10 @@ local function parseSystem(system_config)
     return system
 end
 
+local function shutdown()
+    log(1, "Shutting down system")
+end
+
 ---@param filename string
 local function loadConfig(filename)
     local storage_config = readJson(filename)
@@ -75,55 +79,69 @@ local function loadConfig(filename)
 end
 
 local function compact_storages()
+    local success = true
+
     for system_id, system in pairs(systems) do
         log(1, "Compacting system " .. system_id .. "...")
 
-        local success, _, error_message = pcall(function()
+        local success, error_message = pcall(function()
             system:compactStorage()
         end)
 
         if not success then
             log(3, "Failed to compact storage for system " .. system_id .. ":")
             log(3, tostring(error_message))
+            success = false
         end
     end
+
+    return success
 end
 
 
-log(1, "Loading config")
-loadConfig("/storage.json")
+local function main()
+    log(1, "Loading config")
+    loadConfig("/storage.json")
 
-log(1, "Performing startup storage compaction")
-compact_storages()
+    log(1, "Performing startup storage compaction")
+    local success = compact_storages()
 
-log(1, "Done!")
-log(1, "All systems active")
+    if not success then
+        log(4, "Failed to start system")
+    else
+        log(1, "Done!")
+        log(1, "All systems active")
+        local update_number = 1
+        while true do
+            for system_id, system in pairs(systems) do
+                log(0, "\nUpdating system " .. system_id)
 
+                local success, error_message = pcall(function()
+                    if update_number % settings.get("updates.storage") == 0 then
+                        system:updateStorages()
+                    end
+                    system:updateActiveProviders()
+                    system:updatePassiveProviders()
+                    system:updateRequesters()
+                end)
 
-local update_number = 1
-while true do
-    for system_id, system in pairs(systems) do
-        log(0, "\nUpdating system " .. system_id)
-
-        local success, _, error_message = pcall(function()
-            if update_number % settings.get("updates.storage") == 0 then
-                system:updateStorages()
+                if not success then
+                    log(3, "Failed to update system " .. system_id .. ":")
+                    log(3, tostring(error_message))
+                end
             end
-            system:updateActiveProviders()
-            system:updatePassiveProviders()
-            system:updateRequesters()
-        end)
 
-        if not success then
-            log(3, "Failed to update system " .. system_id .. ":")
-            log(3, tostring(error_message))
+            if update_number % settings.get("updates.compact") == 0 then
+                log(1, "Performing automatic storage compaction")
+                compact_storages()
+            end
+
+            update_number = update_number + 1
         end
     end
-
-    if update_number % settings.get("updates.compact") == 0 then
-        log(1, "Performing automatic storage compaction")
-        compact_storages()
-    end
-
-    update_number = update_number + 1
 end
+
+parallel.waitForAny(main, function()
+    os.pullEventRaw("terminate")
+    shutdown()
+end)
