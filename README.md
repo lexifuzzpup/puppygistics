@@ -28,21 +28,17 @@ Any attached storages that are not defined as one of these three types are Stora
 Below is an example of a `puppygistics.json` file:
 ```json
 {
-    "systems": [
-        {
-            "active_providers": {
-                "minecraft:chest_7": {}
-            },
-            "passive_providers": {
-                "minecraft:chest_1": {}
-            },
-            "requesters": {
-                "minecraft:chest_2": {
-                    "minecraft:stone": 64
-                }
-            }
+    "active_providers": {
+        "minecraft:chest_7": {}
+    },
+    "passive_providers": {
+        "minecraft:chest_1": {}
+    },
+    "requesters": {
+        "minecraft:chest_2": {
+            "minecraft:stone": 64
         }
-    ]
+    }
 }
 ```
 
@@ -51,3 +47,37 @@ When items are inserted into `minecraft:chest_7`, they will be pushed into the n
 When items are inserted into `minecraft:chest_1`, and `minecraft:chest_2` needs stone (and `minecraft:chest_7` has none), then stone will be moved from `minecraft:chest_1` to `minecraft:chest_2`.
 
 If `minecraft:chest_2` has less than 64 stone, and it's only available in storage, it will be pulled from the storages sequentially. If it has 64 or more stone, it will not pull any more stone from the network.
+
+## System Settings
+There are CC-level settings available for the computer. Use the `set <name> <value>` shell command to change them.
+* **updates.storage** - *number*
+    * How many updates should pass before storage contents are updated
+    * Default: 20
+* **updates.compact** - *number*
+    * How many updates should pass before storage is re-compacted
+    * Default: 100
+* **logging.level** - *number*
+    * Logging level for the system.
+    * debug=0, info=1, warning=2, error=3, fatal=4
+    * Default: 1
+
+## Additional Tips
+Multiple simultaneous systems are supported if you want to separate parts of your network. To define multiple systems, declare a `systems` block in your `puppygistics.json` file containing an array of configurations.
+
+An example, creating two networks:
+```json
+{
+    "systems": [
+        {
+            "passive_providers": [ ... ],
+            "requesters": [ ... ],
+        },
+
+        {
+            "passive_providers": [ ... ],
+            "active_providers": [ ... ],
+            "requesters": [ ... ],
+        }
+    ]
+}
+```
