@@ -66,15 +66,15 @@ end
 local function loadConfig(filename)
     local storage_config = readJson(filename)
 
-    local is_array = (#storage_config ~= 0)
+    local is_multisystem = (storage_config.systems ~= nil)
 
-    if is_array then
-        table.insert(systems, storage_config)
-    else
+    if is_multisystem then
         for system_id, system_config in pairs(storage_config.systems) do
             local system = parseSystem(system_config)
             systems[system_id] = system
         end
+    else
+        systems[1] = parseSystem(storage_config)
     end
 end
 
