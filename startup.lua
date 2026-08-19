@@ -20,124 +20,150 @@ settings.define("updates.compact", {
     type = "number"
 })
 
----@type table<number, LogisticsSystem>
-local systems = {}
+---@type LogisticsSystem
+local main_system
 
-local function parseSystem(system_config)
-    local system = LogisticsSystem:new()
+---@param name string name of the peripheral
+---@param system_config table config of the system
+---@return string | nil, table
+local function getInventoryType(name, system_config)
+    if not peripheral.hasType(name, "inventory") then return nil, {} end
 
-    local all_storages = {}
-
-    for _, name in pairs(peripheral.getNames()) do
-        if peripheral.hasType(name, "inventory") then
-            all_storages[name] = true
-        end
+    for other_name, config in pairs(system_config.active_providers or {}) do
+        if name == other_name then return "active_provider", config end
+    end
+    for other_name, config in pairs(system_config.passive_providers or {}) do
+        if name == other_name then return "passive_provider", config end
+    end
+    for other_name, config in pairs(system_config.requesters or {}) do
+        if name == other_name then return "requester", config end
+    end
+    for other_name, config in pairs(system_config.storages or {}) do
+        if name == other_name then return "storage", config end
     end
 
-    for name, config in pairs(system_config.active_providers or {}) do
-        system:addActiveProvider(Inventory:new(name))
-        all_storages[name] = nil
+    return "storage", {}
+end
+
+---@param name string name of the peripheral
+---@param system_config table config of the system
+---@param system LogisticsSystem logistics system to add to
+local function addInventory(name, system_config, system)
+    if not peripheral.isPresent(name) then
+        log(2, "Failed to add peripheral " .. name .. " because it isn't present")
+        return nil
     end
-    for name, config in pairs(system_config.passive_providers or {}) do
-        system:addPassiveProvider(Inventory:new(name))
-        all_storages[name] = nil
+
+    local type, config = getInventoryType(name, system_config)
+
+    if type == nil then
+        return nil
     end
-    for name, config in pairs(system_config.requesters or {}) do
+
+    log(1, "Add inventory " .. name .. " as " .. type)
+
+    if type == "active_provider" then
+        local active_provider = Inventory:new(name)
+
+        system:addActiveProvider(active_provider)
+        return active_provider
+    elseif type == "passive_provider" then
+        local passive_provider = Inventory:new(name)
+
+        system:addPassiveProvider(passive_provider)
+        return passive_provider
+    elseif type == "requester" then
         local requester = RequesterInventory:new(name)
+
         for item_id, count in pairs(config) do
             requester:addFilterItem(item_id, count)
         end
+
         system:addRequester(requester)
-        all_storages[name] = nil
+        return requester
+    elseif type == "storage" then
+        local storage = Inventory:new(name)
+
+        system:addStorage(storage)
+        return storage
     end
 
-    for name in pairs(all_storages) do
-        system:addStorage(Inventory:new(name))
+    log(2, "Unknown inventory type " .. type .. " for " .. name)
+end
+
+---@param system LogisticsSystem
+local function compact_system(system)
+    local success, error_message = pcall(function()
+        system:compactStorage()
+    end)
+
+    if not success then
+        log(3, "Failed to compact system storage:")
+        log(3, tostring(error_message))
     end
 
-    return system
+    return success
 end
 
 local function shutdown()
     log(1, "Shutting down system")
 end
 
----@param filename string
-local function loadConfig(filename)
-    local storage_config = readJson(filename)
 
-    local is_multisystem = (storage_config.systems ~= nil)
-
-    if is_multisystem then
-        for system_id, system_config in pairs(storage_config.systems) do
-            local system = parseSystem(system_config)
-            systems[system_id] = system
-        end
-    else
-        systems[1] = parseSystem(storage_config)
-    end
-end
-
-local function compact_storages()
-    local success = true
-
-    for system_id, system in pairs(systems) do
-        log(1, "Compacting system " .. system_id .. "...")
+---@param system LogisticsSystem
+local function updateLoop(system)
+    local update_number = 1
+    while true do
+        log(0, "\nUpdating system")
 
         local success, error_message = pcall(function()
-            system:compactStorage()
+            if update_number % settings.get("updates.storage") == 0 then
+                system:updateStorages()
+            end
+            system:updateActiveProviders()
+            system:updatePassiveProviders()
+            system:updateRequesters()
         end)
 
         if not success then
-            log(3, "Failed to compact storage for system " .. system_id .. ":")
+            log(3, "Failed to update system:")
             log(3, tostring(error_message))
-            success = false
+        end
+
+        if update_number % settings.get("updates.compact") == 0 then
+            log(1, "Performing automatic storage compaction")
+            compact_system(system)
+        end
+
+        update_number = update_number + 1
+    end
+end
+
+local function main()
+    log(1, "Reading config")
+    local system_config = readJson("/puppygistics.json")
+
+    main_system = LogisticsSystem:new()
+
+    log(1, "Adding attached inventories")
+    for _, name in pairs(peripheral.getNames()) do
+        if peripheral.hasType(name, "inventory") then
+            addInventory(name, system_config, main_system)
         end
     end
 
-    return success
-end
-
-
-local function main()
-    log(1, "Loading config")
-    loadConfig("/puppygistics.json")
-
     log(1, "Performing startup storage compaction")
-    local success = compact_storages()
+    local success = compact_system(main_system)
 
     if not success then
         log(4, "Failed to start system")
     else
         log(1, "Done!")
-        log(1, "All systems active")
-        local update_number = 1
-        while true do
-            for system_id, system in pairs(systems) do
-                log(0, "\nUpdating system " .. system_id)
+        log(1, "System active")
 
-                local success, error_message = pcall(function()
-                    if update_number % settings.get("updates.storage") == 0 then
-                        system:updateStorages()
-                    end
-                    system:updateActiveProviders()
-                    system:updatePassiveProviders()
-                    system:updateRequesters()
-                end)
-
-                if not success then
-                    log(3, "Failed to update system " .. system_id .. ":")
-                    log(3, tostring(error_message))
-                end
-            end
-
-            if update_number % settings.get("updates.compact") == 0 then
-                log(1, "Performing automatic storage compaction")
-                compact_storages()
-            end
-
-            update_number = update_number + 1
-        end
+        parallel.waitForAll(
+            function() updateLoop(main_system) end,
+        )
     end
 end
 

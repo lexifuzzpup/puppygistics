@@ -7,6 +7,7 @@ local item_cache = require("item-cache")
 ---@field passive_providers LinkedList<Inventory>
 ---@field active_providers LinkedList<Inventory>
 ---@field requesters LinkedList<Inventory>
+---@field inventories table<string, Inventory>
 local LogisticsSystem = {}
 LogisticsSystem.__index = LogisticsSystem
 
@@ -18,6 +19,7 @@ function LogisticsSystem:new()
     new.passive_providers = LinkedList:new()
     new.active_providers = LinkedList:new()
     new.requesters = LinkedList:new()
+    new.inventories = {}
 
     setmetatable(new, self)
 
@@ -218,11 +220,7 @@ end
 function LogisticsSystem:compactStorage()
     local currentDestination = self.storages.first
 
-    log(0, "Starting storage compaction")
-    log(0, "Updating storage")
-    self:updateStorages()
-
-    log(0, "Merging storage")
+    log(1, "Starting storage compaction")
     while currentDestination ~= nil do
         ---@type Inventory
         local destination = currentDestination.value
@@ -248,27 +246,69 @@ function LogisticsSystem:compactStorage()
 end
 
 ---@param inventory Inventory
+function LogisticsSystem:_addInventory(inventory)
+    self.inventories[inventory.name] = inventory
+end
+
+---@param name string
+---@return Inventory
+function LogisticsSystem:_removeInventory(name)
+    local inventory = self.inventories[name]
+    self.inventories[name] = nil
+
+    return inventory
+end
+
+---@param inventory Inventory
 function LogisticsSystem:addStorage(inventory)
-    log(0, "Add storage " .. inventory.name)
     self.storages:push(inventory)
+    self:_addInventory(inventory)
 end
 
 ---@param inventory Inventory
 function LogisticsSystem:addPassiveProvider(inventory)
-    log(0, "Add passive provider " .. inventory.name)
     self.passive_providers:push(inventory)
+    self:_addInventory(inventory)
 end
 
 ---@param inventory Inventory
 function LogisticsSystem:addActiveProvider(inventory)
-    log(0, "Add active provider " .. inventory.name)
     self.active_providers:push(inventory)
+    self:_addInventory(inventory)
 end
 
 ---@param inventory Inventory
 function LogisticsSystem:addRequester(inventory)
-    log(0, "Add requester " .. inventory.name)
     self.requesters:push(inventory)
+    self:_addInventory(inventory)
+end
+
+---@param name string
+function LogisticsSystem:removeStorage(name)
+    log(0, "Remove storage " .. name)
+    local inventory = self:_removeInventory(name)
+    self.storages:delete(inventory)
+end
+
+---@param name string
+function LogisticsSystem:removePassiveProvider(name)
+    log(0, "Remove passive provider " .. name)
+    local inventory = self:_removeInventory(name)
+    self.passive_providers:delete(inventory)
+end
+
+---@param name string
+function LogisticsSystem:removeActiveProvider(name)
+    log(0, "Remove active provider " .. name)
+    local inventory = self:_removeInventory(name)
+    self.active_providers:delete(inventory)
+end
+
+---@param name string
+function LogisticsSystem:removeRequester(name)
+    log(0, "Add requester " .. name)
+    local inventory = self:_removeInventory(name)
+    self.requesters:delete(inventory)
 end
 
 return LogisticsSystem

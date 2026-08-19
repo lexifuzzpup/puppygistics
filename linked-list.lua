@@ -22,6 +22,29 @@ function LinkedList:new()
     return new
 end
 
+---deletes an item from the list, returning true if removed
+---@generic T
+---@param value T
+---@return boolean
+function LinkedList:delete(value)
+    local current = self.first
+
+    while current ~= nil do
+        if current.value == value then
+            if current.previous ~= nil then
+                current.previous.next = current.next
+            end
+            if current.next ~= nil then
+                current.next.previous = current.previous
+            end
+            return true
+        end
+        current = current.next
+    end
+
+    return false
+end
+
 ---adds an item to the end of the list
 ---@generic T
 ---@param value T
