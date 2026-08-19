@@ -202,7 +202,12 @@ function LogisticsSystem:_updateRequesters()
             log(0, " -> Requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
 
             if count > 0 then
-                self:pullTo(destination_inventory, item_cache[item_id], count)
+                local item = item_cache[item_id]
+                if item ~= nil then
+                    self:pullTo(destination_inventory, item, count)
+                else
+                    log(0, "Failed to pull " .. item_id .. " because no cache of its type exists")
+                end
             end
         end
 
