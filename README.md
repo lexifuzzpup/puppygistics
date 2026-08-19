@@ -58,8 +58,8 @@ There are CC-level settings available for the computer. Use the `set <name> <val
     * Default: 100
 * **logging.level** - *number*
     * Logging level for the system.
-    * debug=0, info=1, warning=2, error=3, fatal=4
-    * Default: 1
+    * verbose=0, debug=1, info=2, warning=3, error=4, fatal=5
+    * Default: 2
 
 ## Additional Tips
 Multiple simultaneous systems are supported if you want to separate parts of your network. To define multiple systems, declare a `systems` block in your `puppygistics.json` file containing an array of configurations.

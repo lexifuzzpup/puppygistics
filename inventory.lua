@@ -188,8 +188,8 @@ function Inventory:pullFrom(remote, item, count)
         remote:_removeItem(remote_slot_id, item_id, pushed_count)
         self:_addItem(local_slot_id, item_id, pushed_count)
 
-        log(0, remote.name .. " -" .. pushed_count .. "x " .. item_id .. " @ " .. remote_slot_id)
-        log(0, self.name .. " +" .. pushed_count .. "x " .. item_id .. " @ " .. local_slot_id)
+        log.verbose(remote.name .. " -" .. pushed_count .. "x " .. item_id .. " @ " .. remote_slot_id)
+        log.verbose(self.name .. " +" .. pushed_count .. "x " .. item_id .. " @ " .. local_slot_id)
 
         count = count - pushed_count
         if count <= 0 then break end

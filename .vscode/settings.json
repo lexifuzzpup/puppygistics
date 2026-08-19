@@ -7,6 +7,9 @@
         "parallel",
         "settings",
         "http",
-        "shell"
+        "shell",
+        "color",
+        "colors",
+        "term"
     ]
 }

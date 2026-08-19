@@ -27,8 +27,8 @@ function item_cache.add_if_not_present(name, inventory, slot_id)
         tags = slot_detail.tags
     }
 
-    log(0, "Adding cache item for " .. name)
-    log(0, textutils.serialize(item_detail))
+    log.debug("Adding cache item for " .. name)
+    log.debug(textutils.serialize(item_detail))
 
     item_cache[name] = item_detail
 end

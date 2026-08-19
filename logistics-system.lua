@@ -72,8 +72,9 @@ end
 ---@param source_inventory Inventory inventory to push from
 ---@param item ItemDetail item detail from item_cache
 ---@param count integer quantity of the item to push
+---@return integer count how many items were unable to be pushed
 function LogisticsSystem:pushFrom(source_inventory, item, count)
-    log(0, " -> Pushing " .. count .. "x " .. item.name)
+    log.verbose(" -> Pushing " .. count .. "x " .. item.name)
 
     local attempt = 0
     while count > 0 do
@@ -81,20 +82,23 @@ function LogisticsSystem:pushFrom(source_inventory, item, count)
         if destination_inventory == nil then break end
 
         if destination_inventory ~= source_inventory then
-            log(0, "   -> Try " .. destination_inventory.name)
+            log.verbose("   -> Try " .. destination_inventory.name)
 
             count = source_inventory:pushTo(destination_inventory, item, count)
         end
 
         attempt = attempt + 1
     end
+
+    return count
 end
 
 ---@param destination_inventory Inventory inventory to pull to
 ---@param item ItemDetail item detail from item_cache
 ---@param count integer quantity of the item to push
+---@return integer count how many items were unable to be pushed
 function LogisticsSystem:pullTo(destination_inventory, item, count)
-    log(0, " -> Pulling " .. count .. "x " .. item.name)
+    log.verbose(" -> Pulling " .. count .. "x " .. item.name)
 
     local attempt = 0
     while count > 0 do
@@ -102,13 +106,15 @@ function LogisticsSystem:pullTo(destination_inventory, item, count)
         if source_inventory == nil then break end
 
         if source_inventory ~= destination_inventory then
-            log(0, "   -> Try " .. source_inventory.name)
+            log.verbose("   -> Try " .. source_inventory.name)
 
             count = destination_inventory:pullFrom(source_inventory, item, count)
         end
 
         attempt = attempt + 1
     end
+
+    return count
 end
 
 ---@param types table<string, true> bag of inventory types to skip
@@ -129,12 +135,12 @@ function LogisticsSystem:updateActiveProviders()
     local functions = {}
 
     for name, active_provider in pairs(self.active_providers) do
-        log(0, "Updating active provider " .. name)
+        log.verbose("Updating active provider " .. name)
 
         for item_id in pairs(active_provider.item_counts) do
             table.insert(functions, function()
                 local count = active_provider.item_counts[item_id]
-                self:pushFrom(active_provider, item_cache[item_id], count)
+                self:pushFrom(active_provider, item_cache.get(item_id), count)
             end)
         end
     end
@@ -146,21 +152,26 @@ function LogisticsSystem:updateRequesters()
     local functions = {}
 
     for name, requester in pairs(self.requesters) do
-        log(0, "Updating requester " .. name)
+        log.verbose("Updating requester " .. name)
 
         for item_id, filter_count in pairs(requester.filter) do
             local satisfied_count = requester.item_counts[item_id] or 0
             local count = filter_count - satisfied_count
-            log(0, name .. " requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
 
             if count > 0 then
-                local item = item_cache[item_id]
+                log.verbose(name .. " requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
+                
+                local item = item_cache.get(item_id)
                 if item ~= nil then
                     table.insert(functions, function()
-                        self:pullTo(requester, item, count)
+                        local new_count = self:pullTo(requester, item, count)
+
+                        if new_count ~= count then
+                            log.debug(name .. " pulled " .. count - new_count .. "x " .. item_id .. " (" .. (satisfied_count + count - new_count) .. "/" .. filter_count .. " satisfied)")
+                        end
                     end)
                 else
-                    log(0, "Failed to pull " .. item_id .. " because no cache of its type exists")
+                    log.debug("Failed to pull " .. item_id .. " because no cache of its type exists")
                 end
             end
         end
@@ -179,7 +190,7 @@ function LogisticsSystem:compactStorage()
         storage_names_reversed[i] = storage_names[#storage_names - i + 1]
     end
 
-    log(1, "Starting storage compaction")
+    log.info("Starting storage compaction")
 
     for _, destination_name in pairs(storage_names) do
         local destination = self.storages[destination_name]
@@ -187,10 +198,10 @@ function LogisticsSystem:compactStorage()
         for _, source_name in pairs(storage_names_reversed) do
             local source = self.storages[source_name]
 
-            log(0, "Compact: trying to merge " .. source.name .. " to " .. destination.name)
+            log.debug("Compact: trying to merge " .. source.name .. " to " .. destination.name)
 
             for item_id, item_count in pairs(source.item_counts) do
-                source:pushTo(destination, item_cache[item_id], item_count)
+                source:pushTo(destination, item_cache.get(item_id), item_count)
             end
 
             if source.name == destination.name then break end

@@ -4,9 +4,53 @@ local RequesterInventory = require("requester-inventory")
 local LogisticsSystem = require("logistics-system")
 local readJson = require("json")
 
+
+log.addHandler(function(level, text)
+    if level == 0 then term.setTextColor(colors.gray)
+    elseif level == 1 then term.setTextColor(colors.lightGray)
+    elseif level == 2 then term.setTextColor(colors.white)
+    elseif level == 3 then term.setTextColor(colors.yellow)
+    elseif level == 4 then term.setTextColor(colors.red)
+    elseif level == 5 then term.setTextColor(colors.purple)
+    end
+
+    print(text)
+end)
+
+local log_file = fs.open("latest.log", "w")
+log_file.write("")
+log_file.close()
+
+log.addHandler(function(level, text)
+    local level_name = "?"
+
+    if level == 0 then level_name = "VERBOSE"
+    elseif level == 1 then level_name = "DEBUG"
+    elseif level == 2 then level_name = "INFO"
+    elseif level == 3 then level_name = "WARN"
+    elseif level == 4 then level_name = "ERROR"
+    elseif level == 5 then level_name = "FATAL"
+    end
+
+    local hour = tostring(math.floor(os.time()))
+    if #hour == 1 then hour = "0" .. hour end
+
+    local minute = tostring(math.floor((os.time() * 60) % 60))
+    if #minute == 1 then minute = "0" .. minute end
+
+    local second = tostring(math.floor((os.time() * 3600) % 60))
+    if #second == 1 then second = "0" .. second end
+
+    local time = "Day " .. os.day() .. ", " .. hour .. ":" .. minute .. ":" .. second
+
+    local file = fs.open("latest.log", "a")
+    file.write(time .. " " .. level_name .. " " .. text .. "\n")
+    file.close()
+end)
+
 settings.define("logging.level", {
-    description = "Logging level for the system. debug=0, info=1, warning=2, error=3, fatal=4",
-    default = 1,
+    description = "Logging level for the system. verbose=0, debug=1, info=2, warning=3, error=4, fatal=5",
+    default = 2,
     type = "number"
 })
 settings.define("updates.storage", {
@@ -50,7 +94,7 @@ end
 ---@param system LogisticsSystem logistics system to add to
 local function addInventory(name, system_config, system)
     if not peripheral.isPresent(name) then
-        log(2, "Failed to add peripheral " .. name .. " because it isn't present")
+        log.warn("Failed to add peripheral " .. name .. " because it isn't present")
         return nil
     end
 
@@ -88,10 +132,10 @@ local function addInventory(name, system_config, system)
     end
 
     if inventory == nil then
-        log(2, "Unknown inventory type " .. type .. " for " .. name)
+        log.warn("Unknown inventory type " .. type .. " for " .. name)
     else
         inventory:init()
-        log(1, "Added inventory " .. inventory.name .. " (" .. type .. ")")
+        log.info("Added inventory " .. inventory.name .. " (" .. type .. ")")
     end
 
     return inventory
@@ -104,15 +148,15 @@ local function compact_system(system)
     end)
 
     if not success then
-        log(3, "Failed to compact system storage:")
-        log(3, tostring(error_message))
+        log.error("Failed to compact system storage:")
+        log.error(tostring(error_message))
     end
 
     return success
 end
 
 local function shutdown()
-    log(1, "Shutting down system")
+    log.info("Shutting down system")
 end
 
 
@@ -126,7 +170,7 @@ local function updateLoop(system)
         storage = false
     }
     while true do
-        log(0, "\nUpdating system")
+        log.verbose("Updating system @ " .. os.clock() .. "s")
 
         local success, error_message = pcall(function()
             update_types.storage = update_number % settings.get("updates.storage") == 0
@@ -144,12 +188,12 @@ local function updateLoop(system)
         end)
 
         if not success then
-            log(3, "Failed to update system:")
-            log(3, tostring(error_message))
+            log.error("Failed to update system:")
+            log.error(tostring(error_message))
         end
 
         if update_number % settings.get("updates.compact") == 0 then
-            log(1, "Performing automatic storage compaction")
+            log.info("Performing automatic storage compaction")
             compact_system(system)
         end
 
@@ -175,17 +219,17 @@ local function peripheralDetachLoop(system)
         local _, peripheral_name = os.pullEvent("peripheral_detach")
 
         local inventory, type = system:removeInventory(peripheral_name)
-        log(1, "Removed inventory " .. inventory.name .. " (" .. type .. ")")
+        log.info("Removed inventory " .. inventory.name .. " (" .. type .. ")")
     end
 end
 
 local function main()
-    log(1, "Reading config")
+    log.info("Reading config")
     local system_config = readJson("/puppygistics.json")
 
     main_system = LogisticsSystem:new()
 
-    log(1, "Adding attached inventories")
+    log.info("Adding attached inventories")
     local functions = {}
     for _, name in pairs(peripheral.getNames()) do
         local nname = name
@@ -198,14 +242,14 @@ local function main()
 
     parallel.waitForAll(table.unpack(functions))
 
-    log(1, "Performing startup storage compaction")
+    log.info("Performing startup storage compaction")
     local success = compact_system(main_system)
 
     if not success then
-        log(4, "Failed to start system")
+        log.fatal("Failed to start system")
     else
-        log(1, "Done!")
-        log(1, "System active")
+        log.info("Done!")
+        log.info("System active")
 
         parallel.waitForAll(
             function() updateLoop(main_system) end,
