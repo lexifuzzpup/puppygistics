@@ -119,16 +119,28 @@ end
 ---@param system LogisticsSystem
 local function updateLoop(system)
     local update_number = 1
+    local update_types = {
+        active_provider = true,
+        passive_provider = true,
+        requester = true,
+        storage = false
+    }
     while true do
         log(0, "\nUpdating system")
 
         local success, error_message = pcall(function()
-            if update_number % settings.get("updates.storage") == 0 then
-                system:updateStorages()
-            end
-            system:updateActiveProviders()
-            system:updatePassiveProviders()
-            system:updateRequesters()
+            update_types.storage = update_number % settings.get("updates.storage") == 0
+
+            system:updateInventories(update_types)
+
+            parallel.waitForAll(
+                function()
+                    system:updateActiveProviders()
+                end,
+                function()
+                    system:updateRequesters()
+                end
+            )
         end)
 
         if not success then

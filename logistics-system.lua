@@ -111,50 +111,32 @@ function LogisticsSystem:pullTo(destination_inventory, item, count)
     end
 end
 
+---@param types table<string, true> bag of inventory types to skip
+function LogisticsSystem:updateInventories(types)
+    local functions = {}
+    for inventory, type in pairs(self.inventory_types) do
+        if types[type] then
+            table.insert(functions, function()
+                inventory:updateCache()
+            end)
+        end
+    end
+
+    parallel.waitForAll(table.unpack(functions))
+end
+
 function LogisticsSystem:updateActiveProviders()
     local functions = {}
-    local functions2 = {}
 
     for name, active_provider in pairs(self.active_providers) do
         log(0, "Updating active provider " .. name)
 
-        table.insert(functions, function()
-            active_provider:updateCache()
-
-            for item_id in pairs(active_provider.item_counts) do
-                table.insert(functions2, function()
-                    local count = active_provider.item_counts[item_id]
-                    self:pushFrom(active_provider, item_cache[item_id], count)
-                end)
-            end
-        end)
-    end
-
-    parallel.waitForAll(table.unpack(functions))
-    parallel.waitForAll(table.unpack(functions2))
-end
-
-function LogisticsSystem:updatePassiveProviders()
-    local functions = {}
-
-    for name, passive_provider in pairs(self.passive_providers) do
-        table.insert(functions, function()
-            log(0, "Updating passive provider " .. name)
-            passive_provider:updateCache()
-        end)
-    end
-
-    parallel.waitForAll(table.unpack(functions))
-end
-
-function LogisticsSystem:updateStorages()
-    local functions = {}
-
-    for name, storage in pairs(self.storages) do
-        table.insert(functions, function()
-            log(0, "Updating storage " .. name)
-            storage:updateCache()
-        end)
+        for item_id in pairs(active_provider.item_counts) do
+            table.insert(functions, function()
+                local count = active_provider.item_counts[item_id]
+                self:pushFrom(active_provider, item_cache[item_id], count)
+            end)
+        end
     end
 
     parallel.waitForAll(table.unpack(functions))
@@ -162,34 +144,29 @@ end
 
 function LogisticsSystem:updateRequesters()
     local functions = {}
-    local functions2 = {}
 
     for name, requester in pairs(self.requesters) do
-        table.insert(functions, function()
-            log(0, "Updating requester " .. name)
-            requester:updateCache()
+        log(0, "Updating requester " .. name)
 
-            for item_id, filter_count in pairs(requester.filter) do
-                local satisfied_count = requester.item_counts[item_id] or 0
-                local count = filter_count - satisfied_count
-                log(0, name .. " requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
+        for item_id, filter_count in pairs(requester.filter) do
+            local satisfied_count = requester.item_counts[item_id] or 0
+            local count = filter_count - satisfied_count
+            log(0, name .. " requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
 
-                if count > 0 then
-                    local item = item_cache[item_id]
-                    if item ~= nil then
-                        table.insert(functions2, function()
-                            self:pullTo(requester, item, count)
-                        end)
-                    else
-                        log(0, "Failed to pull " .. item_id .. " because no cache of its type exists")
-                    end
+            if count > 0 then
+                local item = item_cache[item_id]
+                if item ~= nil then
+                    table.insert(functions, function()
+                        self:pullTo(requester, item, count)
+                    end)
+                else
+                    log(0, "Failed to pull " .. item_id .. " because no cache of its type exists")
                 end
             end
-        end)
+        end
     end
 
     parallel.waitForAll(table.unpack(functions))
-    parallel.waitForAll(table.unpack(functions2))
 end
 
 function LogisticsSystem:compactStorage()
