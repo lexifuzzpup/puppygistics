@@ -5,6 +5,8 @@
         "textutils",
         "sleep",
         "parallel",
-        "settings"
+        "settings",
+        "http",
+        "shell"
     ]
 }
