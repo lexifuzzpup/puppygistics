@@ -3,7 +3,6 @@ local prefix = "https://raw.githubusercontent.com/lexifuzzpup/puppygistics/refs/
 local files = {
     "inventory.lua",
     "item-cache.lua",
-    "item.lua",
     "json.lua",
     "linked-list.lua",
     "log.lua",
