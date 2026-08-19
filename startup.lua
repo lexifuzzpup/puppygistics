@@ -1,21 +1,9 @@
+local basalt = require("basalt")
 local log = require("log")
 local Inventory = require("inventory")
 local RequesterInventory = require("requester-inventory")
 local LogisticsSystem = require("logistics-system")
 local readJson = require("json")
-
-
-log.addHandler(function(level, text)
-    if level == 0 then term.setTextColor(colors.gray)
-    elseif level == 1 then term.setTextColor(colors.lightGray)
-    elseif level == 2 then term.setTextColor(colors.white)
-    elseif level == 3 then term.setTextColor(colors.yellow)
-    elseif level == 4 then term.setTextColor(colors.red)
-    elseif level == 5 then term.setTextColor(colors.purple)
-    end
-
-    print(text)
-end)
 
 local log_file = fs.open("latest.log", "w")
 log_file.write("")
@@ -66,6 +54,8 @@ settings.define("updates.compact", {
 
 ---@type LogisticsSystem
 local main_system
+
+local frame = basalt.getMainFrame()
 
 ---@param name string name of the peripheral
 ---@param system_config table config of the system
@@ -259,7 +249,99 @@ local function main()
     end
 end
 
-parallel.waitForAny(main, function()
-    os.pullEventRaw("terminate")
-    shutdown()
-end)
+local tabs = frame:addTabControl({
+    x = 1,
+    y = 1,
+    width = basalt.fill(),
+    height = basalt.fill(),
+})
+
+local logs_page = tabs:addTab("Logs")
+do
+    local logs_list = logs_page:addList({
+        width = basalt.fill(),
+        height = basalt.fill()
+    })
+    logs_list:onSelect(function(self, index, item)
+        local popout = logs_page:addFrame({
+            x = 1,
+            y = 1,
+            width = basalt.fill(),
+            height = basalt.fill(),
+            background = colors.black
+        })
+
+        popout:addLabel({
+            x = 1,
+            y = 1,
+            width = basalt.fill(),
+            height = 1,
+            text = "Log Detail",
+            foreground = colors.black,
+            background = colors.yellow
+        })
+
+        popout:addTextBox({
+            x = 1,
+            y = 2,
+            width = basalt.fill(),
+            height = "{((parent or {}).height or 0) - 5}",
+            text = item.text,
+            foreground = item.fg or colors.white,
+            background = colors.black
+        })
+
+        popout:addButton({
+            x = "{(((parent or {}).width) or 0) - 8}",
+            y = 1,
+            width = 10,
+            height = 1,
+            text = "Close",
+            background = colors.red
+        }):onClick(function()
+            popout:destroy()
+            logs_list:focus()
+        end)
+    end)
+    log.addHandler(function(level, text)
+        local bgColor = colors.black
+        local fgColor = colors.white
+
+        if level == 0 then
+            fgColor = colors.gray
+        elseif level == 1 then
+            fgColor = colors.lightGray
+        elseif level == 2 then
+            fgColor = colors.white
+        elseif level == 3 then
+            fgColor = colors.yellow
+        elseif level == 4 then
+            fgColor = colors.red
+        elseif level == 5 then
+            bgColor = colors.red
+            fgColor = colors.black
+        end
+
+        logs_list:addItem({
+            text = text,
+            bg = bgColor,
+            fg = fgColor
+        })
+
+        local maxOffset = math.max(0, logs_list:getItemCount() - logs_list:getHeight())
+        logs_list:setOffset(maxOffset)
+    end)
+end
+
+
+-- local config_page = tabs:addTab("Config")
+-- local statistics_page = tabs:addTab("Statistics")
+
+parallel.waitForAny(
+    function() main() end,
+    function() basalt.run() end,
+    function()
+        os.pullEventRaw("terminate")
+        shutdown()
+    end
+)
