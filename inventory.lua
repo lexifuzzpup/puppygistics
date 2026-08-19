@@ -8,6 +8,7 @@ local item_cache = require("item-cache")
 ---@field slots table<integer, { name: string, count: integer }> item slot cache
 ---@field item_slots table<string, table<integer, true>> item slot cache
 ---@field inventory_size integer number of slots in the inventory
+---@field slot_sizes table<integer, integer> slot capacity multipliers
 local Inventory = {}
 Inventory.__index = Inventory
 
@@ -21,12 +22,16 @@ function Inventory:new(name)
     new.slots = {}
     new.item_slots = {}
     new.inventory_size = 0
+    new.slot_sizes = {}
 
     setmetatable(new, self)
 
-    new:updateCache()
-
     return new
+end
+
+function Inventory:init()
+    self:updateCache()
+    self:updateMetadata()
 end
 
 ---@param slot_id integer slot id in the inventory
@@ -72,9 +77,11 @@ end
 function Inventory:_findSlotForItem(item)
     for slot_id = 1, self.inventory_size do
         local slot = self.slots[slot_id]
-        if slot == nil or (slot.name == item.name and slot.count < item.stack_size) then
-            return slot_id
-        end
+
+        if slot == nil or (
+            slot.name == item.name and
+            slot.count < math.floor(0.5 + item.stack_size * self.slot_sizes[slot_id])
+        ) then return slot_id end
     end
 
     return -1
@@ -104,8 +111,6 @@ function Inventory:_clearCache()
     for slot_id in pairs(self.slots) do
         self.item_counts[slot_id] = nil
     end
-
-    self.inventory_size = 0
 end
 
 ---re-pulls the items from the underlying inventory and updates local caches
@@ -134,8 +139,16 @@ function Inventory:updateCache()
 
         item_cache.add_if_not_present(item_id, self, slot_id)
     end
+end
+
+function Inventory:updateMetadata()
+    if self.interface == nil then return end
 
     self.inventory_size = self.interface.size()
+
+    for slot_id = 1, self.inventory_size do
+        self.slot_sizes[slot_id] = self.interface.getItemLimit(slot_id) / 64
+    end
 end
 
 ---@param remote Inventory inventory object to push items to

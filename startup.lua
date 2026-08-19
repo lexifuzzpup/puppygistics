@@ -56,22 +56,21 @@ local function addInventory(name, system_config, system)
 
     local type, config = getInventoryType(name, system_config)
 
-    if type == nil then
-        return nil
-    end
+    if type == nil then return nil end
 
-    log(1, "Add inventory " .. name .. " (" .. type .. ")")
+    ---@type Inventory
+    local inventory = nil
 
     if type == "active_provider" then
         local active_provider = Inventory:new(name)
 
         system:addInventory(active_provider, type)
-        return active_provider
+        inventory = active_provider
     elseif type == "passive_provider" then
         local passive_provider = Inventory:new(name)
 
         system:addInventory(passive_provider, type)
-        return passive_provider
+        inventory = passive_provider
     elseif type == "requester" then
         local requester = RequesterInventory:new(name)
 
@@ -80,15 +79,22 @@ local function addInventory(name, system_config, system)
         end
 
         system:addInventory(requester, type)
-        return requester
+        inventory = requester
     elseif type == "storage" then
         local storage = Inventory:new(name)
 
         system:addInventory(storage, type)
-        return storage
+        inventory = storage
     end
 
-    log(2, "Unknown inventory type " .. type .. " for " .. name)
+    if inventory == nil then
+        log(2, "Unknown inventory type " .. type .. " for " .. name)
+    else
+        inventory:init()
+        log(1, "Added inventory " .. inventory.name .. " (" .. type .. ")")
+    end
+
+    return inventory
 end
 
 ---@param system LogisticsSystem
@@ -157,7 +163,7 @@ local function peripheralDetachLoop(system)
         local _, peripheral_name = os.pullEvent("peripheral_detach")
 
         local inventory, type = system:removeInventory(peripheral_name)
-        log(1, "Remove inventory " .. inventory.name .. " (" .. type .. ")")
+        log(1, "Removed inventory " .. inventory.name .. " (" .. type .. ")")
     end
 end
 
@@ -168,11 +174,17 @@ local function main()
     main_system = LogisticsSystem:new()
 
     log(1, "Adding attached inventories")
+    local functions = {}
     for _, name in pairs(peripheral.getNames()) do
+        local nname = name
         if peripheral.hasType(name, "inventory") then
-            addInventory(name, system_config, main_system)
+            table.insert(functions, function ()
+                addInventory(nname, system_config, main_system)
+            end)
         end
     end
+
+    parallel.waitForAll(table.unpack(functions))
 
     log(1, "Performing startup storage compaction")
     local success = compact_system(main_system)
