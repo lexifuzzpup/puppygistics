@@ -60,17 +60,17 @@ local function addInventory(name, system_config, system)
         return nil
     end
 
-    log(1, "Add inventory " .. name .. " as " .. type)
+    log(1, "Add inventory " .. name .. " (" .. type .. ")")
 
     if type == "active_provider" then
         local active_provider = Inventory:new(name)
 
-        system:addActiveProvider(active_provider)
+        system:addInventory(active_provider, type)
         return active_provider
     elseif type == "passive_provider" then
         local passive_provider = Inventory:new(name)
 
-        system:addPassiveProvider(passive_provider)
+        system:addInventory(passive_provider, type)
         return passive_provider
     elseif type == "requester" then
         local requester = RequesterInventory:new(name)
@@ -79,12 +79,12 @@ local function addInventory(name, system_config, system)
             requester:addFilterItem(item_id, count)
         end
 
-        system:addRequester(requester)
+        system:addInventory(requester, type)
         return requester
     elseif type == "storage" then
         local storage = Inventory:new(name)
 
-        system:addStorage(storage)
+        system:addInventory(storage, type)
         return storage
     end
 
@@ -139,6 +139,28 @@ local function updateLoop(system)
     end
 end
 
+---@param system LogisticsSystem
+---@param system_config table
+local function peripheralAttachLoop(system, system_config)
+    while true do
+        local _, peripheral_name = os.pullEvent("peripheral")
+
+        if peripheral.hasType(peripheral_name, "inventory") then
+            addInventory(peripheral_name, system_config, system)
+        end
+    end
+end
+
+---@param system LogisticsSystem
+local function peripheralDetachLoop(system)
+    while true do
+        local _, peripheral_name = os.pullEvent("peripheral_detach")
+
+        local inventory, type = system:removeInventory(peripheral_name)
+        log(1, "Remove inventory " .. inventory.name .. " (" .. type .. ")")
+    end
+end
+
 local function main()
     log(1, "Reading config")
     local system_config = readJson("/puppygistics.json")
@@ -163,6 +185,8 @@ local function main()
 
         parallel.waitForAll(
             function() updateLoop(main_system) end,
+            function() peripheralAttachLoop(main_system, system_config) end,
+            function() peripheralDetachLoop(main_system) end
         )
     end
 end

@@ -1,13 +1,13 @@
 local log = require("log")
-local LinkedList = require("linked-list")
 local item_cache = require("item-cache")
 
 ---@class LogisticsSystem
----@field storages LinkedList<Inventory>
----@field passive_providers LinkedList<Inventory>
----@field active_providers LinkedList<Inventory>
----@field requesters LinkedList<Inventory>
+---@field storages {}
+---@field passive_providers {}
+---@field active_providers {}
+---@field requesters {}
 ---@field inventories table<string, Inventory>
+---@field inventory_types table<Inventory, "active_provider" | "passive_provider" | "storage" | "requester">
 local LogisticsSystem = {}
 LogisticsSystem.__index = LogisticsSystem
 
@@ -15,11 +15,12 @@ LogisticsSystem.__index = LogisticsSystem
 function LogisticsSystem:new()
     local new = {}
 
-    new.storages = LinkedList:new()
-    new.passive_providers = LinkedList:new()
-    new.active_providers = LinkedList:new()
-    new.requesters = LinkedList:new()
+    new.storages = {}
+    new.passive_providers = {}
+    new.active_providers = {}
+    new.requesters = {}
     new.inventories = {}
+    new.inventory_types = {}
 
     setmetatable(new, self)
 
@@ -28,73 +29,42 @@ end
 
 ---@param item ItemDetail item_cache details for the item
 ---@param skip_count integer how many inventories to skip forward
----@param storage_only boolean whether or not to exclude requesters in searches
 ---@return Inventory | nil
-function LogisticsSystem:_findDestination(item, skip_count, storage_only)
-    local next = nil
-    local search_stage = 0
-
-    if storage_only then search_stage = 1 end
-
-    while true do
-        if next == nil then
-            if search_stage == 0 then
-                next = self.requesters.first
-                search_stage = 1
-            elseif search_stage == 1 then
-                next = self.storages.first
-                search_stage = 2
-            else
-                break
-            end
-        else
-            if next.value:supportsItem(item) then
-                if skip_count > 0 then
-                    skip_count = skip_count - 1
-                else
-                    return next.value
-                end
-            end
-
-            next = next.next
+function LogisticsSystem:_findDestination(item, skip_count)
+    for _, requester in pairs(self.requesters) do
+        if requester:supportsItem(item) then
+            if skip_count > 0 then skip_count = skip_count - 1
+            else return requester end
+        end
+    end
+    for _, storage in pairs(self.storages) do
+        if storage:supportsItem(item) then
+            if skip_count > 0 then skip_count = skip_count - 1
+            else return storage end
         end
     end
 end
 
 ---@param item_id string namespaced id of the item
 ---@param skip_count integer how many inventories to skip forward
----@param storage_only boolean whether or not to exclude requesters in searches
 ---@return Inventory | nil
-function LogisticsSystem:_findSource(item_id, skip_count, storage_only)
-    local next = nil
-    local search_stage = 0
-
-    if storage_only then search_stage = 2 end
-
-    while true do
-        if next == nil then
-            if search_stage == 0 then
-                next = self.active_providers.first
-                search_stage = 1
-            elseif search_stage == 1 then
-                next = self.passive_providers.first
-                search_stage = 2
-            elseif search_stage == 2 then
-                next = self.storages.first
-                search_stage = 3
-            else
-                break
-            end
-        else
-            if next.value:hasItem(item_id) then
-                if skip_count > 0 then
-                    skip_count = skip_count - 1
-                else
-                    return next.value
-                end
-            end
-
-            next = next.next
+function LogisticsSystem:_findSource(item_id, skip_count)
+    for _, active_provider in pairs(self.active_providers) do
+        if active_provider:hasItem(item_id) then
+            if skip_count > 0 then skip_count = skip_count - 1
+            else return active_provider end
+        end
+    end
+    for _, passive_provider in pairs(self.passive_providers) do
+        if passive_provider:hasItem(item_id) then
+            if skip_count > 0 then skip_count = skip_count - 1
+            else return passive_provider end
+        end
+    end
+    for _, storage in pairs(self.storages) do
+        if storage:hasItem(item_id) then
+            if skip_count > 0 then skip_count = skip_count - 1
+            else return storage end
         end
     end
 end
@@ -102,15 +72,12 @@ end
 ---@param source_inventory Inventory inventory to push from
 ---@param item ItemDetail item detail from item_cache
 ---@param count integer quantity of the item to push
----@param storage_only boolean? whether or not to exclude requesters in searches
-function LogisticsSystem:pushFrom(source_inventory, item, count, storage_only)
-    if storage_only == nil then storage_only = false end
-
+function LogisticsSystem:pushFrom(source_inventory, item, count)
     log(0, " -> Pushing " .. count .. "x " .. item.name)
 
     local attempt = 0
     while count > 0 do
-        local destination_inventory = self:_findDestination(item, attempt, storage_only)
+        local destination_inventory = self:_findDestination(item, attempt)
         if destination_inventory == nil then break end
 
         if destination_inventory ~= source_inventory then
@@ -126,15 +93,12 @@ end
 ---@param destination_inventory Inventory inventory to pull to
 ---@param item ItemDetail item detail from item_cache
 ---@param count integer quantity of the item to push
----@param storage_only boolean? whether or not to exclude requesters in searches
-function LogisticsSystem:pullTo(destination_inventory, item, count, storage_only)
-    if storage_only == nil then storage_only = false end
-
+function LogisticsSystem:pullTo(destination_inventory, item, count)
     log(0, " -> Pulling " .. count .. "x " .. item.name)
 
     local attempt = 0
     while count > 0 do
-        local source_inventory = self:_findSource(item.name, attempt, storage_only)
+        local source_inventory = self:_findSource(item.name, attempt)
         if source_inventory == nil then break end
 
         if source_inventory ~= destination_inventory then
@@ -148,87 +112,70 @@ function LogisticsSystem:pullTo(destination_inventory, item, count, storage_only
 end
 
 function LogisticsSystem:updateActiveProviders()
-    local current = self.active_providers.first
+    for name, active_provider in pairs(self.active_providers) do
+        log(0, "Updating active provider " .. name)
+        active_provider:updateCache()
 
-    while current ~= nil do
-        ---@type Inventory
-        local source_inventory = current.value
-
-        log(0, "Updating active provider " .. current.value.name)
-        current.value:updateCache()
-
-        for item_id in pairs(source_inventory.item_counts) do
-            local count = source_inventory.item_counts[item_id]
-            self:pushFrom(source_inventory, item_cache[item_id], count)
+        for item_id in pairs(active_provider.item_counts) do
+            local count = active_provider.item_counts[item_id]
+            self:pushFrom(active_provider, item_cache[item_id], count)
         end
-
-        current = current.next
     end
 end
 
 function LogisticsSystem:updatePassiveProviders()
-    local current = self.passive_providers.first
-
-    while current ~= nil do
-        log(0, "Updating passive provider " .. current.value.name)
-        current.value:updateCache()
-
-        current = current.next
+    for name, passive_provider in pairs(self.passive_providers) do
+        log(0, "Updating passive provider " .. name)
+        passive_provider:updateCache()
     end
 end
 
 function LogisticsSystem:updateStorages()
-    local current = self.storages.first
-
-    while current ~= nil do
-        log(0, "Updating storage " .. current.value.name)
-        current.value:updateCache()
-
-        current = current.next
+    for name, storage in pairs(self.storages) do
+        log(0, "Updating storage " .. name)
+        storage:updateCache()
     end
 end
 
 function LogisticsSystem:updateRequesters()
-    local current = self.requesters.first
+    for name, requester in pairs(self.requesters) do
+        log(0, "Updating requester " .. name)
+        requester:updateCache()
 
-    while current ~= nil do
-        ---@type RequesterInventory
-        local destination_inventory = current.value
-
-        log(0, "Updating requester " .. destination_inventory.name)
-        destination_inventory:updateCache()
-
-        for item_id, filter_count in pairs(destination_inventory.filter) do
-            local satisfied_count = destination_inventory.item_counts[item_id] or 0
+        for item_id, filter_count in pairs(requester.filter) do
+            local satisfied_count = requester.item_counts[item_id] or 0
             local count = filter_count - satisfied_count
             log(0, " -> Requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
 
             if count > 0 then
                 local item = item_cache[item_id]
                 if item ~= nil then
-                    self:pullTo(destination_inventory, item, count)
+                    self:pullTo(requester, item, count)
                 else
                     log(0, "Failed to pull " .. item_id .. " because no cache of its type exists")
                 end
             end
         end
-
-        current = current.next
     end
 end
 
 function LogisticsSystem:compactStorage()
-    local currentDestination = self.storages.first
+    local storage_names = {}
+    for name in pairs(self.storages) do
+        table.insert(storage_names, name)
+    end
+    local storage_names_reversed = {}
+    for i = 1, #storage_names do
+        storage_names_reversed[i] = storage_names[#storage_names - i + 1]
+    end
 
     log(1, "Starting storage compaction")
-    while currentDestination ~= nil do
-        ---@type Inventory
-        local destination = currentDestination.value
 
-        local currentSource = self.storages.last
-        while currentSource ~= nil do
-            ---@type Inventory
-            local source = currentSource.value
+    for _, destination_name in pairs(storage_names) do
+        local destination = self.storages[destination_name]
+
+        for _, source_name in pairs(storage_names_reversed) do
+            local source = self.storages[source_name]
 
             log(0, "Compact: trying to merge " .. source.name .. " to " .. destination.name)
 
@@ -237,78 +184,47 @@ function LogisticsSystem:compactStorage()
             end
 
             if source.name == destination.name then break end
-
-            currentSource = currentSource.previous
         end
-
-        currentDestination = currentDestination.next
     end
 end
 
----@param inventory Inventory
-function LogisticsSystem:_addInventory(inventory)
-    self.inventories[inventory.name] = inventory
-end
-
 ---@param name string
----@return Inventory
-function LogisticsSystem:_removeInventory(name)
+---@return Inventory, "active_provider" | "passive_provider" | "storage" | "requester"
+function LogisticsSystem:removeInventory(name)
     local inventory = self.inventories[name]
     self.inventories[name] = nil
 
-    return inventory
+    local type = self.inventory_types[inventory]
+    self.inventory_types[inventory] = nil
+
+    if type == "active_provider" then
+        self.active_providers[name] = nil
+    elseif type == "passive_provider" then
+        self.passive_providers[name] = nil
+    elseif type == "storage" then
+        self.storages[name] = nil
+    elseif type == "requester" then
+        self.requesters[name] = nil
+    end
+
+    return inventory, type
 end
 
 ---@param inventory Inventory
-function LogisticsSystem:addStorage(inventory)
-    self.storages:push(inventory)
-    self:_addInventory(inventory)
-end
+---@param type "active_provider" | "passive_provider" | "storage" | "requester"
+function LogisticsSystem:addInventory(inventory, type)
+    if type == "active_provider" then
+        self.active_providers[inventory.name] = inventory
+    elseif type == "passive_provider" then
+        self.passive_providers[inventory.name] = inventory
+    elseif type == "storage" then
+        self.storages[inventory.name] = inventory
+    elseif type == "requester" then
+        self.requesters[inventory.name] = inventory
+    end
 
----@param inventory Inventory
-function LogisticsSystem:addPassiveProvider(inventory)
-    self.passive_providers:push(inventory)
-    self:_addInventory(inventory)
-end
-
----@param inventory Inventory
-function LogisticsSystem:addActiveProvider(inventory)
-    self.active_providers:push(inventory)
-    self:_addInventory(inventory)
-end
-
----@param inventory Inventory
-function LogisticsSystem:addRequester(inventory)
-    self.requesters:push(inventory)
-    self:_addInventory(inventory)
-end
-
----@param name string
-function LogisticsSystem:removeStorage(name)
-    log(0, "Remove storage " .. name)
-    local inventory = self:_removeInventory(name)
-    self.storages:delete(inventory)
-end
-
----@param name string
-function LogisticsSystem:removePassiveProvider(name)
-    log(0, "Remove passive provider " .. name)
-    local inventory = self:_removeInventory(name)
-    self.passive_providers:delete(inventory)
-end
-
----@param name string
-function LogisticsSystem:removeActiveProvider(name)
-    log(0, "Remove active provider " .. name)
-    local inventory = self:_removeInventory(name)
-    self.active_providers:delete(inventory)
-end
-
----@param name string
-function LogisticsSystem:removeRequester(name)
-    log(0, "Add requester " .. name)
-    local inventory = self:_removeInventory(name)
-    self.requesters:delete(inventory)
+    self.inventories[inventory.name] = inventory
+    self.inventory_types[inventory] = type
 end
 
 return LogisticsSystem

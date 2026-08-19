@@ -115,6 +115,7 @@ function Inventory:updateCache()
     if self.interface == nil then return end
 
     local inventory_items = self.interface.list()
+    if inventory_items == nil then return end
 
     for slot_id, slot_item in pairs(inventory_items) do
         local item_id = slot_item.name
