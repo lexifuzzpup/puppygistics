@@ -1,17 +1,13 @@
 {
-    "systems": [
-        {
-            "active_providers": {
-                "minecraft:chest_7": {}
-            },
-            "passive_providers": {
-                "minecraft:chest_1": {}
-            },
-            "requesters": {
-                "minecraft:chest_2": {
-                    "minecraft:stone": 64
-                }
-            }
+    "active_providers": {
+        "minecraft:chest_7": {}
+    },
+    "passive_providers": {
+        "minecraft:chest_1": {}
+    },
+    "requesters": {
+        "minecraft:chest_2": {
+            "minecraft:stone": 64
         }
-    ]
+    }
 }
