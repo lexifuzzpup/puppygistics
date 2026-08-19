@@ -30,7 +30,7 @@ function Inventory:new(name)
 end
 
 ---@param slot_id integer slot id in the inventory
----@param item_id string namespaced id of the item
+---@param item_id string namespaced id of the item with $nbt
 ---@param count integer item count to remove from the slot
 function Inventory:_removeItem(slot_id, item_id, count)
     self.item_counts[item_id] = self.item_counts[item_id] - count
@@ -45,7 +45,7 @@ function Inventory:_removeItem(slot_id, item_id, count)
 end
 
 ---@param slot_id integer slot id in the inventory
----@param item_id string namespaced id of the item
+---@param item_id string namespaced id of the item with $nbt
 ---@param count integer item count to add to the slot
 function Inventory:_addItem(slot_id, item_id, count)
     self.item_counts[item_id] = (self.item_counts[item_id] or 0) + count
@@ -117,43 +117,48 @@ function Inventory:updateCache()
     local inventory_items = self.interface.list()
 
     for slot_id, slot_item in pairs(inventory_items) do
-        local previous_count = self.item_counts[slot_item.name] or 0
-        self.item_counts[slot_item.name] = previous_count + slot_item.count
+        local item_id = slot_item.name
+        if slot_item.nbt ~= nil then
+            item_id = item_id .. "$" .. slot_item.nbt
+        end
+
+        local previous_count = self.item_counts[item_id] or 0
+        self.item_counts[item_id] = previous_count + slot_item.count
 
         self.slots[slot_id] = slot_item
 
-        local item_slots = self.item_slots[slot_item.name] or {}
+        local item_slots = self.item_slots[item_id] or {}
         item_slots[slot_id] = true
-        self.item_slots[slot_item.name] = item_slots
+        self.item_slots[item_id] = item_slots
 
-        item_cache.add_if_not_present(slot_item.name, slot_item.nbt, self, slot_id)
+        item_cache.add_if_not_present(item_id, self, slot_id)
     end
 
     self.inventory_size = self.interface.size()
 end
 
 ---@param remote Inventory inventory object to push items to
----@param item_id string namespaced id of the item
+---@param item ItemDetail item detail from item_cache
 ---@param count integer item count to transfer to the destination
 ---@return integer
-function Inventory:pushTo(remote, item_id, count)
-    return remote:pullFrom(self, item_id, count)
+function Inventory:pushTo(remote, item, count)
+    return remote:pullFrom(self, item, count)
 end
 
 ---@param remote Inventory inventory object to pull items from
----@param item_id string namespaced id of the item
+---@param item ItemDetail item detail from item_cache
 ---@param count integer item count to transfer from the source
 ---@return integer
-function Inventory:pullFrom(remote, item_id, count)
+function Inventory:pullFrom(remote, item, count)
     if self.interface == nil then return count end
+
+    local item_id = item.name
     if (remote.item_counts[item_id] or 0) <= 0 then return count end
 
     local item_slots = {}
     for slot_id in pairs(remote.item_slots[item_id] or {}) do
         item_slots[slot_id] = true
     end
-
-    local item = item_cache[item_id]
 
     for remote_slot_id in pairs(item_slots) do
         local local_slot_id = self:_findSlotForItem(item)

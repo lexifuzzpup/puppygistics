@@ -98,15 +98,13 @@ function LogisticsSystem:_findSource(item_id, skip_count, storage_only)
 end
 
 ---@param source_inventory Inventory inventory to push from
----@param item_id string namespaced id of the item
+---@param item ItemDetail item detail from item_cache
 ---@param count integer quantity of the item to push
 ---@param storage_only boolean? whether or not to exclude requesters in searches
-function LogisticsSystem:pushFrom(source_inventory, item_id, count, storage_only)
+function LogisticsSystem:pushFrom(source_inventory, item, count, storage_only)
     if storage_only == nil then storage_only = false end
 
-    local item = item_cache[item_id]
-
-    log(0, " -> Pushing " .. count .. "x " .. item_id)
+    log(0, " -> Pushing " .. count .. "x " .. item.name)
 
     local attempt = 0
     while count > 0 do
@@ -116,7 +114,7 @@ function LogisticsSystem:pushFrom(source_inventory, item_id, count, storage_only
         if destination_inventory ~= source_inventory then
             log(0, "   -> Try " .. destination_inventory.name)
 
-            count = source_inventory:pushTo(destination_inventory, item_id, count)
+            count = source_inventory:pushTo(destination_inventory, item, count)
         end
 
         attempt = attempt + 1
@@ -124,23 +122,23 @@ function LogisticsSystem:pushFrom(source_inventory, item_id, count, storage_only
 end
 
 ---@param destination_inventory Inventory inventory to pull to
----@param item_id string namespaced id of the item
+---@param item ItemDetail item detail from item_cache
 ---@param count integer quantity of the item to push
 ---@param storage_only boolean? whether or not to exclude requesters in searches
-function LogisticsSystem:pullTo(destination_inventory, item_id, count, storage_only)
+function LogisticsSystem:pullTo(destination_inventory, item, count, storage_only)
     if storage_only == nil then storage_only = false end
 
-    log(0, " -> Pulling " .. count .. "x " .. item_id)
+    log(0, " -> Pulling " .. count .. "x " .. item.name)
 
     local attempt = 0
     while count > 0 do
-        local source_inventory = self:_findSource(item_id, attempt, storage_only)
+        local source_inventory = self:_findSource(item.name, attempt, storage_only)
         if source_inventory == nil then break end
 
         if source_inventory ~= destination_inventory then
             log(0, "   -> Try " .. source_inventory.name)
 
-            count = destination_inventory:pullFrom(source_inventory, item_id, count)
+            count = destination_inventory:pullFrom(source_inventory, item, count)
         end
 
         attempt = attempt + 1
@@ -159,7 +157,7 @@ function LogisticsSystem:_updateActiveProviders()
 
         for item_id in pairs(source_inventory.item_counts) do
             local count = source_inventory.item_counts[item_id]
-            self:pushFrom(source_inventory, item_id, count)
+            self:pushFrom(source_inventory, item_cache[item_id], count)
         end
 
         current = current.next
@@ -204,7 +202,7 @@ function LogisticsSystem:_updateRequesters()
             log(0, " -> Requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
 
             if count > 0 then
-                self:pullTo(destination_inventory, item_id, count)
+                self:pullTo(destination_inventory, item_cache[item_id], count)
             end
         end
 
@@ -239,7 +237,7 @@ function LogisticsSystem:compactStorage()
             log(0, "Compact: trying to merge " .. source.name .. " to " .. destination.name)
 
             for item_id, item_count in pairs(source.item_counts) do
-                source:pushTo(destination, item_id, item_count)
+                source:pushTo(destination, item_cache[item_id], item_count)
             end
 
             if source.name == destination.name then break end
