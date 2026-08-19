@@ -9,7 +9,7 @@ local files = {
     "logistics-system.lua",
     "requester-inventory.lua",
     "startup.lua",
-    "storage.example.json"
+    "puppygistics.example.json"
 }
 
 for _, file in pairs(files) do
@@ -27,15 +27,15 @@ local function exec(cmd)
     shell.run(cmd)
 end
 
-exec("mv /storage.example.json /storage.json")
+exec("mv /puppygistics.example.json /puppygistics.json")
 
 print("Installed!")
 print()
-print("The installer will now open the editor for storage.json. Consult the README for help configuring this file.")
+print("The installer will now open the editor for puppygistics.json. Consult the README for help configuring this file.")
 print()
 print("Press any key to continue.")
 os.pullEvent("key")
 
-exec("edit /storage.json")
-print("Saved to /storage.json")
+exec("edit /puppygistics.json")
+print("Saved to /puppygistics.json")
 print("Your computer is now safe to be rebooted.")

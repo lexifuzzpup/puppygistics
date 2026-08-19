@@ -101,7 +101,7 @@ end
 
 local function main()
     log(1, "Loading config")
-    loadConfig("/storage.json")
+    loadConfig("/puppygistics.json")
 
     log(1, "Performing startup storage compaction")
     local success = compact_storages()
