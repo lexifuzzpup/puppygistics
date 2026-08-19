@@ -103,7 +103,7 @@ function Inventory:_clearCache()
     for item in pairs(self.item_counts) do
         self.item_counts[item] = 0
 
-        local item_slots = self.item_slots[item]
+        local item_slots = self.item_slots[item] or {}
         for slot in pairs(item_slots) do
             item_slots[slot] = nil
         end

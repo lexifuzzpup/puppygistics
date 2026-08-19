@@ -112,51 +112,84 @@ function LogisticsSystem:pullTo(destination_inventory, item, count)
 end
 
 function LogisticsSystem:updateActiveProviders()
+    local functions = {}
+    local functions2 = {}
+
     for name, active_provider in pairs(self.active_providers) do
         log(0, "Updating active provider " .. name)
-        active_provider:updateCache()
 
-        for item_id in pairs(active_provider.item_counts) do
-            local count = active_provider.item_counts[item_id]
-            self:pushFrom(active_provider, item_cache[item_id], count)
-        end
+        table.insert(functions, function()
+            active_provider:updateCache()
+
+            for item_id in pairs(active_provider.item_counts) do
+                table.insert(functions2, function()
+                    local count = active_provider.item_counts[item_id]
+                    self:pushFrom(active_provider, item_cache[item_id], count)
+                end)
+            end
+        end)
     end
+
+    parallel.waitForAll(table.unpack(functions))
+    parallel.waitForAll(table.unpack(functions2))
 end
 
 function LogisticsSystem:updatePassiveProviders()
+    local functions = {}
+
     for name, passive_provider in pairs(self.passive_providers) do
-        log(0, "Updating passive provider " .. name)
-        passive_provider:updateCache()
+        table.insert(functions, function()
+            log(0, "Updating passive provider " .. name)
+            passive_provider:updateCache()
+        end)
     end
+
+    parallel.waitForAll(table.unpack(functions))
 end
 
 function LogisticsSystem:updateStorages()
+    local functions = {}
+
     for name, storage in pairs(self.storages) do
-        log(0, "Updating storage " .. name)
-        storage:updateCache()
+        table.insert(functions, function()
+            log(0, "Updating storage " .. name)
+            storage:updateCache()
+        end)
     end
+
+    parallel.waitForAll(table.unpack(functions))
 end
 
 function LogisticsSystem:updateRequesters()
+    local functions = {}
+    local functions2 = {}
+
     for name, requester in pairs(self.requesters) do
-        log(0, "Updating requester " .. name)
-        requester:updateCache()
+        table.insert(functions, function()
+            log(0, "Updating requester " .. name)
+            requester:updateCache()
 
-        for item_id, filter_count in pairs(requester.filter) do
-            local satisfied_count = requester.item_counts[item_id] or 0
-            local count = filter_count - satisfied_count
-            log(0, " -> Requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
+            for item_id, filter_count in pairs(requester.filter) do
+                local satisfied_count = requester.item_counts[item_id] or 0
+                local count = filter_count - satisfied_count
+                log(0, name .. " requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
 
-            if count > 0 then
-                local item = item_cache[item_id]
-                if item ~= nil then
-                    self:pullTo(requester, item, count)
-                else
-                    log(0, "Failed to pull " .. item_id .. " because no cache of its type exists")
+                if count > 0 then
+                    local item = item_cache[item_id]
+                    if item ~= nil then
+                        table.insert(functions2, function()
+                            self:pullTo(requester, item, count)
+                        end)
+                    else
+                        log(0, "Failed to pull " .. item_id .. " because no cache of its type exists")
+                    end
                 end
             end
-        end
+        end)
     end
+
+    parallel.waitForAll(table.unpack(functions))
+    parallel.waitForAll(table.unpack(functions2))
 end
 
 function LogisticsSystem:compactStorage()
