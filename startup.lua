@@ -65,7 +65,15 @@ end
 local function compact_storages()
     for system_id, system in pairs(systems) do
         log(1, "Compacting system " .. system_id .. "...")
-        system:compactStorage()
+
+        local success, _, error_message = pcall(function()
+            system:compactStorage()
+        end)
+
+        if not success then
+            log(3, "Failed to compact storage for system " .. system_id .. ":")
+            log(3, tostring(error_message))
+        end
     end
 end
 
@@ -85,12 +93,19 @@ while true do
     for system_id, system in pairs(systems) do
         log(0, "\nUpdating system " .. system_id)
 
-        if update_number % settings.get("updates.storage") == 0 then
-            system:updateStorages()
+        local success, _, error_message = pcall(function()
+            if update_number % settings.get("updates.storage") == 0 then
+                system:updateStorages()
+            end
+            system:updateActiveProviders()
+            system:updatePassiveProviders()
+            system:updateRequesters()
+        end)
+
+        if not success then
+            log(3, "Failed to update system " .. system_id .. ":")
+            log(3, tostring(error_message))
         end
-        system:updateActiveProviders()
-        system:updatePassiveProviders()
-        system:updateRequesters()
     end
 
     if update_number % settings.get("updates.compact") == 0 then
