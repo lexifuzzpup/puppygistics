@@ -9,12 +9,13 @@ local files = {
     "inventory.lua",
     "item-cache.lua",
     "json.lua",
-    "linked-list.lua",
     "log.lua",
     "logistics-system.lua",
     "requester-inventory.lua",
     "startup.lua",
-    "puppygistics.example.json"
+    "puppygistics.example.json",
+    "dashboard.lua",
+    "statistics.lua",
 }
 
 print("\n### DOWNLOADING FILES ###")

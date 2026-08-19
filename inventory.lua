@@ -1,5 +1,6 @@
 local log = require("log")
 local item_cache = require("item-cache")
+local statistics = require("statistics")
 
 ---@class Inventory
 ---@field name string name of the peripheral
@@ -184,14 +185,15 @@ function Inventory:pullFrom(remote, item, count)
         local local_slot_id = self:_findSlotForItem(item)
         if local_slot_id == -1 then break end
 
-        local pushed_count = self.interface.pullItems(remote.name, remote_slot_id, count, local_slot_id)
-        remote:_removeItem(remote_slot_id, item_id, pushed_count)
-        self:_addItem(local_slot_id, item_id, pushed_count)
+        local pulled_count = self.interface.pullItems(remote.name, remote_slot_id, count, local_slot_id)
+        remote:_removeItem(remote_slot_id, item_id, pulled_count)
+        self:_addItem(local_slot_id, item_id, pulled_count)
 
-        log.verbose(remote.name .. " -" .. pushed_count .. "x " .. item_id .. " @ " .. remote_slot_id)
-        log.verbose(self.name .. " +" .. pushed_count .. "x " .. item_id .. " @ " .. local_slot_id)
+        statistics.itemTransferred(item.name, pulled_count, remote.name, self.name)
+        log.verbose(remote.name .. " -" .. pulled_count .. "x " .. item_id .. " @ " .. remote_slot_id)
+        log.verbose(self.name .. " +" .. pulled_count .. "x " .. item_id .. " @ " .. local_slot_id)
 
-        count = count - pushed_count
+        count = count - pulled_count
         if count <= 0 then break end
     end
 

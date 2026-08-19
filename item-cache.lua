@@ -9,7 +9,8 @@ local ItemDetail = {}
 
 local item_cache = {}
 
--- parallel-safe item cache
+---parallel-safe item cache
+---@return ItemDetail | nil 
 function item_cache.get(name)
     ---@type table
     local item_detail
