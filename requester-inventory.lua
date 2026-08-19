@@ -29,12 +29,12 @@ function RequesterInventory:supportsItem(item)
     return self.filter[item.name] ~= nil
 end
 
-function RequesterInventory:pullFrom(remote, item_id, count)
-    local satisfied_count = self.item_counts[item_id] or 0
-    local filter_count = self.filter[item_id] or 0
+function RequesterInventory:pullFrom(remote, item, count)
+    local satisfied_count = self.item_counts[item.name] or 0
+    local filter_count = self.filter[item.name] or 0
 
     local pull_count = math.max(0, filter_count - satisfied_count)
-    local new_count = Inventory.pullFrom(self, remote, item_id, pull_count)
+    local new_count = Inventory.pullFrom(self, remote, item, pull_count)
     local delta_count = new_count - pull_count
 
     return count + delta_count
