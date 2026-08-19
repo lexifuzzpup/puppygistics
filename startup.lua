@@ -26,14 +26,21 @@ local systems = {}
 local function parseSystem(system_config)
     local system = LogisticsSystem:new()
 
+    local all_storages = {}
+
+    for _, name in pairs(peripheral.getNames()) do
+        if peripheral.hasType(name, "inventory") then
+            all_storages[name] = true
+        end
+    end
+
     for name, config in pairs(system_config.active_providers or {}) do
         system:addActiveProvider(Inventory:new(name))
+        all_storages[name] = nil
     end
     for name, config in pairs(system_config.passive_providers or {}) do
         system:addPassiveProvider(Inventory:new(name))
-    end
-    for name, config in pairs(system_config.storages or {}) do
-        system:addStorage(Inventory:new(name))
+        all_storages[name] = nil
     end
     for name, config in pairs(system_config.requesters or {}) do
         local requester = RequesterInventory:new(name)
@@ -41,6 +48,11 @@ local function parseSystem(system_config)
             requester:addFilterItem(item_id, count)
         end
         system:addRequester(requester)
+        all_storages[name] = nil
+    end
+
+    for name in pairs(all_storages) do
+        system:addStorage(Inventory:new(name))
     end
 
     return system
