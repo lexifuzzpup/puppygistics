@@ -9,22 +9,23 @@ wget run https://raw.githubusercontent.com/lexifuzzpup/puppygistics/refs/heads/m
 ```
 
 ## Configuration
-`storage.json` is a file that outlines the entire storage network. Inside, there are four types of storage peripherals:
+`puppygistics.json` is a file that outlines the entire logistics network. Inside, there are three types of storage peripherals:
 
 * Active provider (`active_provider`)
-    * Will attempt to push all of its contents into the network. Pushes into requesters first, then storage.
+    * Will attempt to pFush all of its contents into the network. Pushes into requesters first, then storage.
     * Requires no configuration
 * Passive provider (`passive_provider`)
     * Will act as a source for items. It does not try to push contents outwards. Items will not automatically be inserted.
-    * Requires no configuration
-* Storage (`storage`)
-    * Neutral inventory. Does not push or pull anything on its own.
     * Requires no configuration
 * Requester (`requester`)
     * Will attempt to pull contents from the network. Pulls from active providers first, then passive providers, then finally storage.
     * Requires desired items to be set. Use an `"item": count` format for configuration.
 
-Below is an example of a `storage.json` file:
+Any attached storages that are not defined as one of these three types are Storage (`storage`).
+* Neutral inventory. Does not push or pull anything on its own.
+* Requires no configuration
+
+Below is an example of a `puppygistics.json` file:
 ```json
 {
     "systems": [
@@ -34,12 +35,6 @@ Below is an example of a `storage.json` file:
             },
             "passive_providers": {
                 "minecraft:chest_1": {}
-            },
-            "storages": {
-                "minecraft:chest_3": {},
-                "minecraft:chest_4": {},
-                "minecraft:chest_5": {},
-                "minecraft:chest_6": {}
             },
             "requesters": {
                 "minecraft:chest_2": {
