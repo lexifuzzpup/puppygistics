@@ -9,7 +9,18 @@ settings.define("logging.level", {
     default = 1,
     type = "number"
 })
+settings.define("updates.storage", {
+    description = "How many updates should pass before storage contents are updated",
+    default = 20,
+    type = "number"
+})
+settings.define("updates.compact", {
+    description = "How many updates should pass before storage is re-compacted",
+    default = 1000,
+    type = "number"
+})
 
+---@type table<number, LogisticsSystem>
 local systems = {}
 
 local function parseSystem(system_config)
@@ -51,22 +62,41 @@ local function loadConfig(filename)
     end
 end
 
+local function compact_storages()
+    for system_id, system in pairs(systems) do
+        log(1, "Compacting system " .. system_id .. "...")
+        system:compactStorage()
+    end
+end
+
 
 log(1, "Loading config")
 loadConfig("/storage.json")
 
 log(1, "Performing startup storage compaction")
-for system_id, system in pairs(systems) do
-    log(1, "Compacting system " .. system_id .. "...")
-    system:compactStorage()
-end
+compact_storages()
 
 log(1, "Done!")
 log(1, "All systems active")
 
+
+local update_number = 1
 while true do
     for system_id, system in pairs(systems) do
         log(0, "\nUpdating system " .. system_id)
-        system:updateSystem()
+
+        if update_number % settings.get("updates.storage") == 0 then
+            system:updateStorages()
+        end
+        system:updateActiveProviders()
+        system:updatePassiveProviders()
+        system:updateRequesters()
     end
+
+    if update_number % settings.get("updates.compact") == 0 then
+        log(1, "Performing automatic storage compaction")
+        compact_storages()
+    end
+
+    update_number = update_number + 1
 end

@@ -145,7 +145,7 @@ function LogisticsSystem:pullTo(destination_inventory, item, count, storage_only
     end
 end
 
-function LogisticsSystem:_updateActiveProviders()
+function LogisticsSystem:updateActiveProviders()
     local current = self.active_providers.first
 
     while current ~= nil do
@@ -164,7 +164,7 @@ function LogisticsSystem:_updateActiveProviders()
     end
 end
 
-function LogisticsSystem:_updatePassiveProviders()
+function LogisticsSystem:updatePassiveProviders()
     local current = self.passive_providers.first
 
     while current ~= nil do
@@ -175,7 +175,7 @@ function LogisticsSystem:_updatePassiveProviders()
     end
 end
 
-function LogisticsSystem:_updateStorages()
+function LogisticsSystem:updateStorages()
     local current = self.storages.first
 
     while current ~= nil do
@@ -186,7 +186,7 @@ function LogisticsSystem:_updateStorages()
     end
 end
 
-function LogisticsSystem:_updateRequesters()
+function LogisticsSystem:updateRequesters()
     local current = self.requesters.first
 
     while current ~= nil do
@@ -215,19 +215,12 @@ function LogisticsSystem:_updateRequesters()
     end
 end
 
-function LogisticsSystem:updateSystem()
-    self:_updateStorages()
-    self:_updateActiveProviders()
-    self:_updatePassiveProviders()
-    self:_updateRequesters()
-end
-
 function LogisticsSystem:compactStorage()
     local currentDestination = self.storages.first
 
     log(0, "Starting storage compaction")
     log(0, "Updating storage")
-    self:_updateStorages()
+    self:updateStorages()
 
     log(0, "Merging storage")
     while currentDestination ~= nil do
