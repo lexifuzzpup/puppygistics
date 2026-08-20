@@ -42,10 +42,12 @@ function Inventory:_removeItem(slot_id, item_id, count)
     self.item_counts[item_id] = self.item_counts[item_id] - count
 
     local slot = self.slots[slot_id]
+    if slot == nil then return end
+
     slot.count = slot.count - count
 
     if slot.count <= 0 then
-        self.slots[slot_id].name = "minecraft:air"
+        self.slots[slot_id] = nil
         (self.item_slots[item_id] or {})[slot_id] = nil
     end
 end
@@ -79,7 +81,9 @@ function Inventory:_findSlotForItem(item)
     for slot_id = 1, self.inventory_size do
         local slot = self.slots[slot_id]
 
-        if slot == nil or slot.name == "minecraft:air" or (
+        log.verbose("slot " .. slot_id .. " is " .. tostring(slot and slot.name))
+
+        if slot == nil or (
             slot.name == item.name and
             slot.count < math.floor(0.5 + item.stack_size * self.slot_sizes[slot_id])
         ) then return slot_id end
@@ -110,7 +114,7 @@ function Inventory:_clearCache()
         end
     end
     for slot_id in pairs(self.slots) do
-        self.item_counts[slot_id] = nil
+        self.slots[slot_id] = nil
     end
 end
 

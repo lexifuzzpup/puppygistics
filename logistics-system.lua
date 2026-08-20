@@ -210,9 +210,11 @@ function LogisticsSystem:compactStorage()
 end
 
 ---@param name string
----@return Inventory, "active_provider" | "passive_provider" | "storage" | "requester"
+---@return Inventory | nil, "active_provider" | "passive_provider" | "storage" | "requester" | nil
 function LogisticsSystem:removeInventory(name)
     local inventory = self.inventories[name]
+
+    if inventory == nil then return end
     self.inventories[name] = nil
 
     local type = self.inventory_types[inventory]

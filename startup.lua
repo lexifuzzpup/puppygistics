@@ -320,7 +320,10 @@ local function peripheralDetachLoop(system)
         local _, peripheral_name = os.pullEvent("peripheral_detach")
 
         local inventory, type = system:removeInventory(peripheral_name)
-        log.info("Removed inventory " .. inventory.name .. " (" .. type .. ")")
+
+        if inventory ~= nil then
+            log.info("Removed inventory " .. inventory.name .. " (" .. type .. ")")
+        end
     end
 end
 
