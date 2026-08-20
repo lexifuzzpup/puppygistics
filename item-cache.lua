@@ -32,17 +32,19 @@ function item_cache.add_if_not_present(name, inventory, slot_id)
     item_cache[name] = true
     local slot_detail = inventory.interface.getItemDetail(slot_id)
 
-    local item_detail = {
-        name = name,
-        stack_size = slot_detail.maxCount,
-        display_name = slot_detail.displayName,
-        tags = slot_detail.tags
-    }
+    if slot_detail ~= nil then
+        local item_detail = {
+            name = name,
+            stack_size = slot_detail.maxCount,
+            display_name = slot_detail.displayName,
+            tags = slot_detail.tags
+        }
 
-    log.debug("Adding cache item for " .. name)
-    log.debug(textutils.serialize(item_detail))
+        log.debug("Adding cache item for " .. name)
+        log.debug(textutils.serialize(item_detail))
 
-    item_cache[name] = item_detail
+        item_cache[name] = item_detail
+    end
 end
 
 return item_cache

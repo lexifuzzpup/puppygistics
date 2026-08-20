@@ -145,13 +145,13 @@ end
 function Inventory:updateMetadata()
     if self.interface == nil then return end
 
-    self.inventory_size = self.interface.size()
+    self.inventory_size = self.interface.size() or 0
 
     local functions = {}
 
     for slot_id = 1, self.inventory_size do
         table.insert(functions, function()
-            self.slot_sizes[slot_id] = self.interface.getItemLimit(slot_id) / 64
+            self.slot_sizes[slot_id] = (self.interface.getItemLimit(slot_id) or 64) / 64
         end)
     end
 
@@ -186,15 +186,17 @@ function Inventory:pullFrom(remote, item, count)
         if local_slot_id == -1 then break end
 
         local pulled_count = self.interface.pullItems(remote.name, remote_slot_id, count, local_slot_id)
-        remote:_removeItem(remote_slot_id, item_id, pulled_count)
-        self:_addItem(local_slot_id, item_id, pulled_count)
+        if pulled_count ~= nil then
+            remote:_removeItem(remote_slot_id, item_id, pulled_count)
+            self:_addItem(local_slot_id, item_id, pulled_count)
 
-        statistics.itemTransferred(item.name, pulled_count, remote.name, self.name)
-        log.verbose(remote.name .. " -" .. pulled_count .. "x " .. item_id .. " @ " .. remote_slot_id)
-        log.verbose(self.name .. " +" .. pulled_count .. "x " .. item_id .. " @ " .. local_slot_id)
+            statistics.itemTransferred(item.name, pulled_count, remote.name, self.name)
+            log.verbose(remote.name .. " -" .. pulled_count .. "x " .. item_id .. " @ " .. remote_slot_id)
+            log.verbose(self.name .. " +" .. pulled_count .. "x " .. item_id .. " @ " .. local_slot_id)
 
-        count = count - pulled_count
-        if count <= 0 then break end
+            count = count - pulled_count
+            if count <= 0 then break end
+        end
     end
 
     return count
