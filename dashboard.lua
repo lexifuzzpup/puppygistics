@@ -475,6 +475,134 @@ local function createInventoryTab(tabs)
     return { update = update }
 end
 
+local function createMembersTab(tabs)
+    local page = tabs:addTab("Members")
+
+    local total_members_progress_bar = page:addProgressBar({
+        x = 1,
+        y = 1,
+        width = basalt.fill(),
+        height = 1,
+        barColor = colors.blue
+    })
+    local non_storage_members_progress_bar = page:addProgressBar({
+        x = 1,
+        y = 1,
+        width = basalt.fill(),
+        height = 1,
+        barColor = colors.orange,
+        direction = "left",
+        background = false
+    })
+    local total_members_label = page:addLabel({
+        text = "",
+        x = 2,
+        y = 1
+    })
+
+    local list = page:addColumn({
+        x = 1,
+        y = 2,
+        width = basalt.fill(),
+        height = basalt.fill(),
+        scrollable = true,
+        gap = 1,
+        background = colors.black
+    })
+
+    local containers = {}
+
+    ---@param system LogisticsSystem
+    local function updateMemberCount(system)
+        local max_peripherals = 256
+        local logistics_members = #system.inventory_names
+        local non_storage_members = 0
+
+        for _, peripheral_name in pairs(peripheral.getNames()) do
+            if not system.inventories[peripheral_name] then
+                non_storage_members = non_storage_members + 1
+            end
+        end
+
+        total_members_label.text =
+            logistics_members .. "/" ..
+            (max_peripherals - non_storage_members) .. " members (" ..
+            (non_storage_members) .. " extra peripherals)"
+        total_members_progress_bar.progress = logistics_members / max_peripherals * 100
+        non_storage_members_progress_bar.progress = non_storage_members / max_peripherals * 100
+
+        if total_members_progress_bar.progress >= 95 then
+            total_members_progress_bar.barColor = colors.red
+        elseif total_members_progress_bar.progress >= 80 then
+            total_members_progress_bar.barColor = colors.brown
+        elseif total_members_progress_bar.progress >= 50 then
+            total_members_progress_bar.barColor = colors.green
+        else
+            total_members_progress_bar.barColor = colors.blue
+        end
+    end
+
+    return {
+        addMember = function(system, inventory, type)
+            local type_name = ""
+            local type_color = colors.black
+
+            if type == "storage" then
+                type_name = "Storage"
+                type_color = colors.yellow
+            elseif type == "active_provider" then
+                type_name = "Active Provider"
+                type_color = colors.purple
+            elseif type == "passive_provider" then
+                type_name = "Passive Provider"
+                type_color = colors.red
+            elseif type == "requester" then
+                type_name = "Requester"
+                type_color = colors.blue
+            elseif type == "unassigned" then
+                type_name = "Unassigned"
+                type_color = colors.lightGray
+            end
+
+            local container = list:addFrame({
+                width = basalt.fill(),
+                height = 2,
+                background = false
+            })
+            container:addFrame({
+                x = 1,
+                y = 1,
+                width = 1,
+                height = basalt.fill(),
+                background = type_color
+            })
+            container:addLabel({
+                text = inventory.name,
+                x = 3,
+                y = 1,
+                width = basalt.fill(),
+                height = 1
+            })
+            container:addLabel({
+                text = type_name,
+                x = 3,
+                y = 2,
+                foreground = colors.lightGray
+            })
+
+            table.insert(containers, container)
+
+            updateMemberCount(system)
+        end,
+        removeMember = function(system, name, type)
+
+        end,
+        update = function(system)
+            updateMemberCount(system)
+        end
+    }
+end
+
 return function(frame)
     local tabs = frame:addTabControl({
         x = 1,
@@ -489,15 +617,23 @@ return function(frame)
     local logsTab = createLogsTab(tabs)
     local statisticsTab = createStatisticsTab(tabs)
     local inventoryTab = createInventoryTab(tabs)
+    local membersTab = createMembersTab(tabs)
     local shellTab = createShellTab(tabs)
 
     return {
         update = function()
             statisticsTab.update()
             inventoryTab.update(system)
+            membersTab.update(system)
         end,
         setSystem = function(new_system)
             system = new_system
+        end,
+        addMember = function(inventory, type)
+            membersTab.addMember(system, inventory, type)
+        end,
+        removeMember = function(name, type)
+            membersTab.addMember(system, name, type)
         end
     }
 end

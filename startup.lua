@@ -142,7 +142,20 @@ local function addInventory(name, system_config, system)
         log.info("Added inventory " .. inventory.name .. " (" .. type .. ")")
     end
 
+    dashboard.addMember(inventory, type)
+
     return inventory
+end
+
+---@param name string name of the inventory peripheral
+---@param system LogisticsSystem logistics system to remove from
+local function removeInventory(name, system)
+    local inventory, type = system:removeInventory(name)
+
+    if inventory ~= nil then
+        log.info("Removed inventory " .. inventory.name .. " (" .. type .. ")")
+        dashboard.addMember(inventory, type)
+    end
 end
 
 ---@param system LogisticsSystem
@@ -239,11 +252,7 @@ local function peripheralDetachLoop(system)
     while true do
         local _, peripheral_name = os.pullEvent("peripheral_detach")
 
-        local inventory, type = system:removeInventory(peripheral_name)
-
-        if inventory ~= nil then
-            log.info("Removed inventory " .. inventory.name .. " (" .. type .. ")")
-        end
+        removeInventory(peripheral_name, system)
     end
 end
 
@@ -252,6 +261,7 @@ local function main()
     local system_config = readJson("/puppygistics.json")
 
     main_system = LogisticsSystem:new()
+    dashboard.setSystem(main_system)
 
     log.info("Adding attached inventories")
     local functions = {}
@@ -274,8 +284,6 @@ local function main()
     else
         log.info("Done!")
         log.info("System active")
-
-        dashboard.setSystem(main_system)
 
         parallel.waitForAll(
             function() updateLoop(main_system) end,
