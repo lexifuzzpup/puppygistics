@@ -379,6 +379,25 @@ local function createStatisticsTab(tabs)
     return { update = update }
 end
 
+local function createShellTab(tabs)
+    local page = tabs:addTab("Shell")
+
+    local program = page:addProgram({
+        x = 1,
+        y = 1,
+        width = basalt.fill(),
+        height = basalt.fill(),
+    })
+
+    program:execute("rom/programs/shell.lua")
+
+    tabs:onChange(function()
+        if tabs.active == 3 then
+            program:focus()
+        end
+    end)
+end
+
 return function(frame)
     local tabs = frame:addTabControl({
         x = 1,
@@ -389,6 +408,7 @@ return function(frame)
 
     local logsTab = createLogsTab(tabs)
     local statisticsTab = createStatisticsTab(tabs)
+    local shellTab = createShellTab(tabs)
 
     return {
         update = function()
