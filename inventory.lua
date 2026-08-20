@@ -79,7 +79,7 @@ function Inventory:_findSlotForItem(item)
     for slot_id = 1, self.inventory_size do
         local slot = self.slots[slot_id]
 
-        if slot == nil or (
+        if slot == nil or slot.name == "minecraft:air" or (
             slot.name == item.name and
             slot.count < math.floor(0.5 + item.stack_size * self.slot_sizes[slot_id])
         ) then return slot_id end
