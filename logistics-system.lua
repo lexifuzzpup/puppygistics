@@ -142,7 +142,10 @@ function LogisticsSystem:updateActiveProviders()
         for item_id in pairs(active_provider.item_counts) do
             table.insert(functions, function()
                 local count = active_provider.item_counts[item_id]
-                self:pushFrom(active_provider, item_cache.get(item_id), count)
+                local item = item_cache.get(item_id)
+                if item ~= nil then
+                    self:pushFrom(active_provider, item, count)
+                end
             end)
         end
     end
