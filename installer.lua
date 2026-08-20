@@ -16,6 +16,7 @@ local files = {
     "puppygistics.example.json",
     "dashboard.lua",
     "statistics.lua",
+    "semaphore.lua",
 }
 
 print("\n### DOWNLOADING FILES ###")

@@ -120,7 +120,10 @@ function Inventory:updateCache()
 
     if self.interface == nil then return end
 
+    local permit = PeripheralSemaphore:obtainPermit()
     local inventory_items = self.interface.list()
+    permit:destroy()
+
     if inventory_items == nil then return end
 
     for slot_id, slot_item in pairs(inventory_items) do
@@ -145,13 +148,19 @@ end
 function Inventory:updateMetadata()
     if self.interface == nil then return end
 
+    local size_permit = PeripheralSemaphore:obtainPermit()
     self.inventory_size = self.interface.size() or 0
+    size_permit:destroy()
 
     local functions = {}
 
     for slot_id = 1, self.inventory_size do
         table.insert(functions, function()
-            self.slot_sizes[slot_id] = (self.interface.getItemLimit(slot_id) or 64) / 64
+            local item_limit_permit = PeripheralSemaphore:obtainPermit()
+            local item_limit = self.interface.getItemLimit(slot_id) or 64
+            item_limit_permit:destroy()
+
+            self.slot_sizes[slot_id] = item_limit / 64
         end)
     end
 
@@ -185,7 +194,10 @@ function Inventory:pullFrom(remote, item, count)
         local local_slot_id = self:_findSlotForItem(item)
         if local_slot_id == -1 then break end
 
+        local pull_permit = PeripheralSemaphore:obtainPermit()
         local pulled_count = self.interface.pullItems(remote.name, remote_slot_id, count, local_slot_id)
+        pull_permit:destroy()
+
         if pulled_count ~= nil then
             remote:_removeItem(remote_slot_id, item_id, pulled_count)
             self:_addItem(local_slot_id, item_id, pulled_count)

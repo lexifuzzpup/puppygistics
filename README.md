@@ -50,16 +50,19 @@ If `minecraft:chest_2` has less than 64 stone, and it's only available in storag
 
 ## System Settings
 There are CC-level settings available for the computer. Use the `set <name> <value>` shell command to change them.
-* **updates.storage** - *number*
-    * How many updates should pass before storage contents are updated
-    * Default: 20
-* **updates.compact** - *number*
-    * How many updates should pass before storage is re-compacted
-    * Default: 100
 * **logging.level** - *number*
     * Logging level for the system.
     * verbose=0, debug=1, info=2, warning=3, error=4, fatal=5
     * Default: 2
+* **puppygistics.updates.storage** - *number*
+    * How many updates should pass before storage contents are updated
+    * Default: 20
+* **puppygistics.updates.compact** - *number*
+    * How many updates should pass before storage is re-compacted
+    * Default: 100
+* **puppygistics.parallelism** - *number*
+    * How many parallel inventory operations to allow
+    * Default: 128
 
 ## Additional Tips
 Multiple simultaneous systems are supported if you want to separate parts of your network. To define multiple systems, declare a `systems` block in your `puppygistics.json` file containing an array of configurations.

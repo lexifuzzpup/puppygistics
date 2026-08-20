@@ -6,6 +6,28 @@ local LogisticsSystem = require("logistics-system")
 local readJson = require("json")
 local statistics = require("statistics")
 local createDashboard = require("dashboard")
+local Semaphore = require("semaphore")
+
+settings.define("logging.level", {
+    description = "Logging level for the system. verbose=0, debug=1, info=2, warning=3, error=4, fatal=5",
+    default = 2,
+    type = "number"
+})
+settings.define("puppygistics.updates.storage", {
+    description = "How many updates should pass before storage contents are updated",
+    default = 20,
+    type = "number"
+})
+settings.define("puppygistics.updates.compact", {
+    description = "How many updates should pass before storage is re-compacted.",
+    default = 1000,
+    type = "number"
+})
+settings.define("puppygistics.parallelism", {
+    description = "How many parallel inventory operations to allow",
+    default = 128,
+    type = "number"
+})
 
 local log_file = fs.open("latest.log", "w")
 log_file.write("")
@@ -38,21 +60,7 @@ log.addHandler(function(level, text)
     file.close()
 end)
 
-settings.define("logging.level", {
-    description = "Logging level for the system. verbose=0, debug=1, info=2, warning=3, error=4, fatal=5",
-    default = 2,
-    type = "number"
-})
-settings.define("updates.storage", {
-    description = "How many updates should pass before storage contents are updated",
-    default = 20,
-    type = "number"
-})
-settings.define("updates.compact", {
-    description = "How many updates should pass before storage is re-compacted",
-    default = 1000,
-    type = "number"
-})
+PeripheralSemaphore = Semaphore:new(269)
 
 ---@type LogisticsSystem
 local main_system

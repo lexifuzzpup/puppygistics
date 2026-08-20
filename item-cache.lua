@@ -30,7 +30,10 @@ function item_cache.add_if_not_present(name, inventory, slot_id)
     if inventory.interface == nil then error("Inventory is not attached") end
 
     item_cache[name] = true
+
+    local slot_detail_permit = PeripheralSemaphore:obtainPermit()
     local slot_detail = inventory.interface.getItemDetail(slot_id)
+    slot_detail_permit:destroy()
 
     if slot_detail ~= nil then
         local item_detail = {
