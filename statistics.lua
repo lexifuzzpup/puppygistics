@@ -36,10 +36,12 @@ function statistics.itemTransferred(item_id, count, from_inventory, to_inventory
 end
 
 function statistics.freeze()
+    log.debug("Statistics frozen")
     statistics.frozen = true
 end
 
 function statistics.unfreeze()
+    log.debug("Statistics unfrozen")
     statistics.frozen = false
 end
 
