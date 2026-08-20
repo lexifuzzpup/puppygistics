@@ -12,12 +12,15 @@ local item_cache = {}
 ---parallel-safe item cache
 ---@return ItemDetail | nil 
 function item_cache.get(name)
-    ---@type table
+    ---@type ItemDetail
     local item_detail
 
-    repeat
+    while true do
         item_detail = item_cache[name]
-    until item_detail ~= true
+
+        if item_detail ~= true then break
+        else coroutine.yield() end
+    end
 
     return item_detail
 end
