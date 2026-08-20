@@ -60,7 +60,7 @@ log.addHandler(function(level, text)
     file.close()
 end)
 
-PeripheralSemaphore = Semaphore:new(269)
+PeripheralSemaphore = Semaphore:new(settings.get("puppygistics.parallelism"))
 
 ---@type LogisticsSystem
 local main_system
