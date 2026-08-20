@@ -67,91 +67,7 @@ local main_system
 
 local frame = basalt.getMainFrame()
 
-local tabs = frame:addTabControl({
-    x = 1,
-    y = 1,
-    width = basalt.fill(),
-    height = basalt.fill(),
-})
-
-local logs_page = tabs:addTab("Logs")
-do
-    local logs_list = logs_page:addList({
-        width = basalt.fill(),
-        height = basalt.fill()
-    })
-    logs_list:onSelect(function(self, index, item)
-        local popout = logs_page:addFrame({
-            x = 1,
-            y = 1,
-            width = basalt.fill(),
-            height = basalt.fill(),
-            background = colors.black
-        })
-
-        popout:addLabel({
-            x = 1,
-            y = 1,
-            width = basalt.fill(),
-            height = 1,
-            text = "Log Detail",
-            foreground = colors.black,
-            background = colors.yellow
-        })
-
-        popout:addTextBox({
-            x = 1,
-            y = 2,
-            width = basalt.fill(),
-            height = "{((parent or {}).height or 0) - 5}",
-            text = item.text,
-            foreground = item.fg or colors.white,
-            background = colors.black
-        })
-
-        popout:addButton({
-            x = "{(((parent or {}).width) or 0) - 8}",
-            y = 1,
-            width = 10,
-            height = 1,
-            text = "Close",
-            background = colors.red
-        }):onClick(function()
-            popout:destroy()
-            logs_list:focus()
-        end)
-    end)
-    log.addHandler(function(level, text)
-        local bgColor = colors.black
-        local fgColor = colors.white
-
-        if level == 0 then
-            fgColor = colors.gray
-        elseif level == 1 then
-            fgColor = colors.lightGray
-        elseif level == 2 then
-            fgColor = colors.white
-        elseif level == 3 then
-            fgColor = colors.yellow
-        elseif level == 4 then
-            fgColor = colors.red
-        elseif level == 5 then
-            bgColor = colors.red
-            fgColor = colors.black
-        end
-
-        logs_list:addItem({
-            text = text,
-            bg = bgColor,
-            fg = fgColor
-        })
-
-        local maxOffset = math.max(0, logs_list:getItemCount() - logs_list:getHeight())
-        logs_list:setOffset(maxOffset)
-    end)
-end
-
-local dashboard = createDashboard(tabs)
+local dashboard = createDashboard(frame)
 
 
 -- local config_page = tabs:addTab("Config")
@@ -252,6 +168,19 @@ local function shutdown()
     log.info("Shutting down system")
 end
 
+local function statisticsUpdateLoop()
+    local nextStatisticsEpoch = os.clock()
+
+    while true do
+        if os.clock() > nextStatisticsEpoch then
+            nextStatisticsEpoch = math.max(os.clock(), nextStatisticsEpoch + 0.2)
+
+            statistics.epoch(os.epoch("utc"))
+            dashboard.update()
+        end
+        coroutine.yield()
+    end
+end
 
 ---@param system LogisticsSystem
 local function updateLoop(system)
@@ -262,7 +191,7 @@ local function updateLoop(system)
         requester = true,
         storage = false
     }
-    local nextStatisticsEpoch = os.clock()
+
     while true do
         log.verbose("Updating system @ " .. os.clock() .. "s")
 
@@ -289,13 +218,6 @@ local function updateLoop(system)
         if update_number % settings.get("puppygistics.updates.compact") == 0 then
             log.info("Performing automatic storage compaction")
             compact_system(system)
-        end
-
-        if os.clock() > nextStatisticsEpoch then
-            nextStatisticsEpoch = math.max(os.clock(), nextStatisticsEpoch + 1)
-
-            statistics.epoch()
-            dashboard.update()
         end
 
         update_number = update_number + 1
@@ -366,6 +288,7 @@ end
 parallel.waitForAny(
     function() main() end,
     function() basalt.run() end,
+    function() statisticsUpdateLoop() end,
     function()
         os.pullEventRaw("terminate")
         shutdown()

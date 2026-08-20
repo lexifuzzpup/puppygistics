@@ -1,38 +1,52 @@
-local log = require "log"
+local log = require("log")
+
+---@class Epoch
+---@field time integer epoch (ms) in utc
+---@field transferred integer total items transferred
+---@field operations integer total inventory operations made
+---@field items_transferred table<string, integer> number of times an item was transferred
+---@field extractions table<string, integer> number of times an inventory was extracted from
+---@field insertions table<string, integer> number of times an inventory was inserted into
+local Epoch = {}
+Epoch.__index = Epoch
+
+---@return Epoch
+function Epoch:new()
+    local new = {
+        time = 0,
+
+        transferred = 0,
+        operations = 0,
+
+        items_transferred = {},
+        extractions = {},
+        insertions = {},
+    }
+
+    setmetatable(new, self)
+
+    return new
+end
+
 local statistics = {
     frozen = false,
-    data = {
-        epochs = 0,
-
-        transferred_session = {},
-        transferred_new = 0,
-
-        items_transferred_session = {},
-        items_transferred_new = {},
-
-        operations_session = {},
-        operations_new = 0,
-
-        extractions_session = {},
-        extractions_new = {},
-
-        insertions_session = {},
-        insertions_new = {},
-    }
+    ---@type Epoch[]
+    epochs = {},
+    next = Epoch:new()
 }
 
 ---@param item_id string namespaced id of the item with $nbt
 ---@param count integer quantity of the item was transfered
 ---@param from_inventory string name of the source inventory
 ---@param to_inventory string name of the destination inventory
-function statistics.itemTransferred(item_id, count, from_inventory, to_inventory)
+function statistics.trackTransfer(item_id, count, from_inventory, to_inventory)
     if statistics.frozen then return end
 
-    statistics.data.transferred_new = statistics.data.transferred_new + count
-    statistics.data.items_transferred_new[item_id] = (statistics.data.items_transferred_new[item_id] or 0) + count
-    statistics.data.operations_new = statistics.data.operations_new + 1
-    statistics.data.extractions_new[from_inventory] = (statistics.data.extractions_new[from_inventory] or 0) + 1
-    statistics.data.insertions_new[to_inventory] = (statistics.data.insertions_new[to_inventory] or 0) + 1
+    statistics.next.transferred = statistics.next.transferred + count
+    statistics.next.items_transferred[item_id] = (statistics.next.items_transferred[item_id] or 0) + count
+    statistics.next.operations = statistics.next.operations + 1
+    statistics.next.extractions[from_inventory] = (statistics.next.extractions[from_inventory] or 0) + 1
+    statistics.next.insertions[to_inventory] = (statistics.next.insertions[to_inventory] or 0) + 1
 end
 
 function statistics.freeze()
@@ -45,23 +59,11 @@ function statistics.unfreeze()
     statistics.frozen = false
 end
 
-function statistics.epoch()
-    statistics.data.epochs = statistics.data.epochs + 1
+function statistics.epoch(time)
+    statistics.next.time = time
+    table.insert(statistics.epochs, statistics.next)
 
-    table.insert(statistics.data.transferred_session, statistics.data.transferred_new)
-    statistics.data.transferred_new = 0
-
-    table.insert(statistics.data.items_transferred_session, statistics.data.items_transferred_new)
-    statistics.data.items_transferred_new = {}
-
-    table.insert(statistics.data.operations_session, statistics.data.operations_new)
-    statistics.data.operations_new = 0
-
-    table.insert(statistics.data.extractions_session, statistics.data.extractions_new)
-    statistics.data.extractions_new = {}
-
-    table.insert(statistics.data.insertions_session, statistics.data.insertions_new)
-    statistics.data.insertions_new = {}
+    statistics.next = Epoch:new()
 end
 
 return statistics

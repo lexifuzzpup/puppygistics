@@ -206,7 +206,7 @@ function Inventory:pullFrom(remote, item, count)
             remote:_removeItem(remote_slot_id, item_id, pulled_count)
             self:_addItem(local_slot_id, item_id, pulled_count)
 
-            statistics.itemTransferred(item.name, pulled_count, remote.name, self.name)
+            statistics.trackTransfer(item.name, pulled_count, remote.name, self.name)
             log.verbose(remote.name .. " -" .. pulled_count .. "x " .. item_id .. " @ " .. remote_slot_id)
             log.verbose(self.name .. " +" .. pulled_count .. "x " .. item_id .. " @ " .. local_slot_id)
 
