@@ -167,7 +167,7 @@ local function createStatisticsTab(tabs)
             y = default_frame_y,
             width = basalt.fill(),
             height = "{parent.height - 1}",
-            background = colors.white
+            background = colors.black
         })
         local button = button_bar:addButton({
             text = "Transfers",
@@ -185,6 +185,8 @@ local function createStatisticsTab(tabs)
         })
 
         local items_transferred_table = frame:addTable({
+            x = 2,
+            y = 2,
             columns = {
                 { title = "Item", width = basalt.fill() },
                 { title = "Count", width = 8 }
@@ -273,10 +275,12 @@ local function createStatisticsTab(tabs)
         local operations_per_second = frame:addLabel({
             text = "",
             x = 2,
-            y = 2
+            y = 1
         })
 
         local operations_table = frame:addTable({
+            x = 2,
+            y = 2,
             columns = {
                 { title = "Inventory", width = basalt.fill() },
                 { title = "Inserts", width = 8 },
