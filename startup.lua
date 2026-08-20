@@ -65,9 +65,7 @@ PeripheralSemaphore = Semaphore:new(settings.get("puppygistics.parallelism"))
 ---@type LogisticsSystem
 local main_system
 
-local frame = basalt.getMainFrame()
-
-local dashboard = createDashboard(frame)
+local dashboard = createDashboard(basalt.getMainFrame())
 
 
 -- local config_page = tabs:addTab("Config")
@@ -276,6 +274,8 @@ local function main()
     else
         log.info("Done!")
         log.info("System active")
+
+        dashboard.setSystem(main_system)
 
         parallel.waitForAll(
             function() updateLoop(main_system) end,

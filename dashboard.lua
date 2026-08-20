@@ -194,7 +194,8 @@ local function createStatisticsTab(tabs)
             data = {},
             width = basalt.fill(),
             height = basalt.fill(),
-            headerBackground = colors.blue
+            headerBackground = colors.blue,
+            scrollbar = "always"
         })
 
         items_transferred_table:sortBy(2, false)
@@ -244,7 +245,10 @@ local function createStatisticsTab(tabs)
 
                 local table_data = {}
                 for item_id in pairs(latest_items_transferred) do
-                    table.insert(table_data, { item_cache[item_id].display_name, latest_items_transferred[item_id] })
+                    table.insert(table_data, {
+                        (item_cache.get(item_id) or {}).display_name or item_id,
+                        latest_items_transferred[item_id]
+                    })
                 end
 
                 local scroll_offset = items_transferred_table.offset
@@ -290,6 +294,7 @@ local function createStatisticsTab(tabs)
             width = basalt.fill(),
             height = basalt.fill(),
             headerBackground = colors.red,
+            scrollbar = "always"
         })
 
         operations_table:sortBy(2, false)
@@ -402,6 +407,74 @@ local function createShellTab(tabs)
     end)
 end
 
+local function createInventoryTab(tabs)
+    local page = tabs:addTab("Inventory")
+
+    local function update() end
+
+    local total_items_label = page:addLabel({
+        text = "",
+        x = 2,
+        y = 2
+    })
+
+    local inventory_table = page:addTable({
+        columns = {
+            { title = "Item", width = basalt.fill() },
+            { title = "Count", width = 8 }
+        },
+        data = {},
+        width = basalt.fill(),
+        height = basalt.fill(),
+        headerBackground = colors.brown,
+        scrollbar = "always"
+    })
+
+    inventory_table:sortBy(2, false)
+
+    local operations_table_formatters = {
+        [2] = function(value)
+            return format_number(value)
+        end
+    }
+
+    ---@param system LogisticsSystem|nil
+    update = function(system)
+        if system == nil then return end
+
+        local total_items = 0
+        local items_counts = {}
+
+        for _, inventory in pairs(system.inventories) do
+            for item_id, count in pairs(inventory.item_counts) do
+                if count > 0 then
+                    items_counts[item_id] = (items_counts[item_id] or 0) + count
+                    total_items = total_items + count
+                end
+            end
+        end
+
+        total_items_label.text =
+            format_number(total_items) ..
+            " total items"
+
+        local table_data = {}
+
+        for item_id, count in pairs(items_counts) do
+            table.insert(table_data, {
+                (item_cache.get(item_id) or {}).display_name or item_id,
+                count
+            })
+        end
+
+        local scroll_offset = inventory_table.offset
+        inventory_table:setData(table_data, operations_table_formatters)
+        inventory_table.offset = scroll_offset
+    end
+
+    return { update = update }
+end
+
 return function(frame)
     local tabs = frame:addTabControl({
         x = 1,
@@ -410,13 +483,21 @@ return function(frame)
         height = basalt.fill(),
     })
 
+    ---@type LogisticsSystem
+    local system = nil
+
     local logsTab = createLogsTab(tabs)
     local statisticsTab = createStatisticsTab(tabs)
+    local inventoryTab = createInventoryTab(tabs)
     local shellTab = createShellTab(tabs)
 
     return {
         update = function()
             statisticsTab.update()
+            inventoryTab.update(system)
+        end,
+        setSystem = function(new_system)
+            system = new_system
         end
     }
 end
