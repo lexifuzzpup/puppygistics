@@ -267,7 +267,7 @@ local function updateLoop(system)
         log.verbose("Updating system @ " .. os.clock() .. "s")
 
         local success, error_message = pcall(function()
-            update_types.storage = update_number % settings.get("updates.storage") == 0
+            update_types.storage = update_number % settings.get("puppygistics.updates.storage") == 0
 
             system:updateInventories(update_types)
 
@@ -286,7 +286,7 @@ local function updateLoop(system)
             log.error(tostring(error_message))
         end
 
-        if update_number % settings.get("updates.compact") == 0 then
+        if update_number % settings.get("puppygistics.updates.compact") == 0 then
             log.info("Performing automatic storage compaction")
             compact_system(system)
         end
