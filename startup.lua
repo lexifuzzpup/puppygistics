@@ -28,7 +28,7 @@ PeripheralSemaphore = Semaphore:new(settings.get("puppygistics.parallelism"))
 local mainframe = Mainframe:new()
 
 log.info("Reading config")
-mainframe:loadConfig("/puppygistics.json")
+mainframe:loadConfig("/puppygistics.config.lua")
 mainframe:createFileLogger("/latest.log")
 
 parallel.waitForAny(

@@ -1,4 +1,4 @@
 .settings
 *.log
-puppygistics.json
+puppygistics.config.lua*
 basalt.lua

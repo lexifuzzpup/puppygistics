@@ -8,8 +8,24 @@ Download and run the installer on a CC: Tweaked terminal
 wget run https://raw.githubusercontent.com/lexifuzzpup/puppygistics/refs/heads/main/installer.lua
 ```
 
+## System Settings
+There are CC-level settings available for the computer. Use the `set <name> <value>` shell command to change them.
+* **logging.level** - *number*
+    * Logging level for the system.
+    * verbose=0, debug=1, info=2, warning=3, error=4, fatal=5
+    * Default: 2
+* **puppygistics.updates.storage** - *number*
+    * How many updates should pass before storage contents are updated
+    * Default: 20
+* **puppygistics.updates.compact** - *number*
+    * How many updates should pass before storage is re-compacted
+    * Default: 1000
+* **puppygistics.parallelism** - *number*
+    * How many parallel inventory operations to allow. More is faster, but has a higher chance to hang the system.
+    * Default: 128
+
 ## Configuration
-`puppygistics.json` is a file that outlines the entire logistics network. Inside, there are three types of storage peripherals:
+`puppygistics.config.lua` is a file that outlines the entire logistics network. Inside, there are three types of storage peripherals:
 
 * Active provider (`active_provider`)
     * Will attempt to pFush all of its contents into the network. Pushes into requesters first, then storage.
@@ -24,26 +40,26 @@ wget run https://raw.githubusercontent.com/lexifuzzpup/puppygistics/refs/heads/m
     * Neutral inventory. Does not push or pull anything on its own.
     * Requires no configuration
 
-Below is an example of a `puppygistics.json` file:
-```json
+Below is an example of a `puppygistics.config.lua` file:
+```lua
 {
-    "members": {
-        "minecraft:chest_1": {
-            "type": "active_provider"
+    members = {
+        ["minecraft:chest_1"] = {
+            type = "active_provider"
         },
-        "minecraft:chest_2": {
-            "type": "passive_provider"
+        "minecraft:chest_2" = {
+            type = "passive_provider"
         },
-        "minecraft:chest_3": {
-            "type": "requester",
-            "options": {
-                "filter": {
-                    "minecraft:stone": 64
+        "minecraft:chest_3" = {
+            type = "requester",
+            options = {
+                filter = {
+                    ["minecraft:stone"] = 64
                 }
             }
         },
-        "minecraft:chest_4": {
-            "type": "storage"
+        "minecraft:chest_4" = {
+            type = "storage"
         }
     }
 }
@@ -54,19 +70,3 @@ When items are inserted into `minecraft:chest_1`, they will be pushed into the n
 When items are inserted into `minecraft:chest_2`, and `minecraft:chest_3` needs stone (and `minecraft:chest_4` has none), then stone will be moved from `minecraft:chest_2` to `minecraft:chest_3`.
 
 If `minecraft:chest_3` has less than 64 stone, and it's only available in `minecraft:chest_4`, it will be pulled from `minecraft:chest_4`. If it has 64 or more stone, it will not pull any more stone from the network.
-
-## System Settings
-There are CC-level settings available for the computer. Use the `set <name> <value>` shell command to change them.
-* **logging.level** - *number*
-    * Logging level for the system.
-    * verbose=0, debug=1, info=2, warning=3, error=4, fatal=5
-    * Default: 2
-* **puppygistics.updates.storage** - *number*
-    * How many updates should pass before storage contents are updated
-    * Default: 20
-* **puppygistics.updates.compact** - *number*
-    * How many updates should pass before storage is re-compacted
-    * Default: 100
-* **puppygistics.parallelism** - *number*
-    * How many parallel inventory operations to allow
-    * Default: 128

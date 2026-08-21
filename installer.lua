@@ -15,7 +15,6 @@ local files = {
     "storage-inventory.lua",
     "requester-inventory.lua",
     "startup.lua",
-    "puppygistics.example.json",
     "dashboard.lua",
     "statistics.lua",
     "semaphore.lua",
@@ -33,9 +32,6 @@ for _, file in pairs(files) do
     handle.close()
 end
 
-exec("mv /puppygistics.example.json /puppygistics.json")
-exec("rm /puppygistics.example.json")
-
 print("\n### DEPDENDENCIES ###")
 print("Puppygistics has the following dependencies:")
 print("* Basalt 2.5")
@@ -48,15 +44,39 @@ print("-> Installing Basalt 2.5")
 exec("rm basalt.lua")
 exec("wget run https://basalt.madefor.cc/2.5/install.lua minified")
 
-print("Fully installed!")
-
 print("\n### Configuration ###")
-print()
-print("The installer will now open the editor for puppygistics.json. Consult the README for help configuring this file.")
-print()
-print("Press any key to continue.")
-os.pullEvent("key")
+if fs.exists("/puppygistics.json") then
+    print("A /puppygistics.json config file was found.")
+    print("Would you like to update this config? (Y/n)")
 
-exec("edit /puppygistics.json")
-print("Saved to /puppygistics.json")
-print("Puppygistics configuration complete! Your computer is now safe to reboot.")
+    while true do
+        local response = read():lower()
+
+        if #response == 0 or response:sub(1, 1) == "y" then
+            fs.move("/puppygistics.json", "/puppygistics.config.lua")
+            print("Success!")
+            break
+        elseif response:sub(1, 1) == "n" then
+            print("Keeping the file where it is")
+            break
+        end
+    end
+end
+local config_filepath = "/puppygistics.config.lua"
+if not fs.exists(config_filepath) then
+    print()
+    print("The installer will now create the following config file:")
+    print(config_filepath)
+    print("This is configurable via the dashboard.")
+    print("Consult the README for help configuring this file manually.")
+    print()
+    print("Press any key to continue.")
+    os.pullEvent("key")
+
+    local file = fs.open(config_filepath, "w")
+    file.write("{ members = {} }")
+    file.close()
+end
+
+print("Puppygistics fully installed!")
+print("Your computer is now safe to reboot.")

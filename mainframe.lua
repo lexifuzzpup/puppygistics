@@ -34,22 +34,45 @@ function Mainframe:new()
 end
 
 function Mainframe:loadConfig(filepath)
+    if not fs.exists(filepath) then
+        error("Config file " .. filepath .. " does not exist")
+    end
     local file = fs.open(filepath, "r")
     local success, contents = pcall(file.readAll)
     file.close()
 
 
-    if not success then error(contents) end
+    if not success then error("Failed to read config file: " .. contents) end
 
-    local success, json = pcall(textutils.unserializeJSON, contents)
-    if not success then error(json) end
+    local config = textutils.unserialize(contents)
+    if not config then config = textutils.unserializeJSON(contents) end
+    if not config then error("Config file is malformed (must be lua-serialized or json)") end
 
-    self.config = json
+    local success, malformed_error = pcall(function()
+        if config == nil then error("config cannot be nil") end
+        if config.members == nil then error("config.members cannot be nil") end
+
+        for i, member in pairs(config.members) do
+            local path = "config.members[" .. i .. "]"
+            if type(member) ~= "table" then error(path .. " must be a table") end
+
+            if member.type == nil then error(path .. ".type cannot be nil") end
+
+            local options_type = type(member.options)
+            if options_type ~= "table" and options_type ~= "nil" then
+                error(path .. ".options must be a table or nil")
+            end
+        end
+    end)
+
+    if not success then error("Config file is malformed: " .. malformed_error) end
+
+    self.config = config
     self.config_filepath = filepath
 end
 
 function Mainframe:saveConfig()
-    local contents = textutils.serialiseJSON(self.config)
+    local contents = textutils.serialise(self.config)
 
     local file = fs.open(self.config_filepath, "w")
     pcall(file.write, contents)
