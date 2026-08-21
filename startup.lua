@@ -8,6 +8,11 @@ settings.define("logging.level", {
     default = 2,
     type = "number"
 })
+settings.define("logging.file.enabled", {
+    description = "Whether or not to log to a file",
+    default = false,
+    type = "boolean"
+})
 settings.define("puppygistics.updates.active_provider", {
     description = "Frequency (in updates) at which active_provider inventories should be re-polled",
     default = 1,
@@ -49,7 +54,10 @@ local mainframe = Mainframe:new()
 
 log.info("Reading config")
 mainframe:loadConfig("/puppygistics.config.lua")
-mainframe:createFileLogger("/latest.log")
+
+if settings.get("logging.file.enabled") then
+    mainframe:createFileLogger("/latest.log")
+end
 
 parallel.waitForAny(
     function() mainframe:run() end,

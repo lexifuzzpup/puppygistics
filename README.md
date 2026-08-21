@@ -14,6 +14,10 @@ There are CC-level settings available for the computer. Use the `set <name> <val
     * Logging level for the system.
     * verbose=0, debug=1, info=2, warning=3, error=4, fatal=5
     * Default: 2
+* **logging.file.enabled** - *boolean*
+    * Whether or not to log to a file
+    * With long-running systems, the disk storage can quickly fill up, so disabling logging helps prevent that from happening
+    * Default: false
 * **puppygistics.updates.active_provider** - *number*
     * Frequency (in updates) at which active_provider inventories should be re-polled
     * Default: 1
@@ -33,7 +37,7 @@ There are CC-level settings available for the computer. Use the `set <name> <val
     * How many seconds should pass between storage compactions
     * Default: 50
 * **puppygistics.parallelism** - *number*
-    * How many parallel inventory operations to allow.
+    * How many parallel inventory operations to allow
     * More is faster, but has a higher chance to hang the system.
     * Default: 128
 
