@@ -242,6 +242,16 @@ local function createStatisticsTab(tabs)
             scrollbar = "always"
         })
 
+        local item_toast = page:addToast({
+            x = "{(parent.width - self.width) / 2}",
+            y = "{parent.height - self.height + 1}",
+            maxWidth = "{parent.width}"
+        })
+        local item_toast_data = {}
+        items_transferred_table:onSelect(function(self, index)
+            item_toast:show(item_toast_data[index])
+        end)
+
         items_transferred_table:sortBy(2, false)
 
         local items_transferred_table_formatters = {
@@ -282,16 +292,21 @@ local function createStatisticsTab(tabs)
                 transferred_per_second.text = "Items transfered: " .. time_format_formatter(latest_transferred)
 
                 local table_data = {}
+                item_toast_data = {}
                 for item_id in pairs(latest_items_transferred) do
+                    local count = latest_items_transferred[item_id]
                     table.insert(table_data, {
                         (item_cache.get(item_id) or {}).display_name or item_id,
-                        latest_items_transferred[item_id]
+                        count
                     })
+                    item_toast_data[#table_data] = item_id .. " " .. time_format_formatter(count)
                 end
 
                 local scroll_offset = items_transferred_table.offset
+                local selected = items_transferred_table.selected
                 items_transferred_table:setData(table_data, items_transferred_table_formatters)
                 items_transferred_table.offset = scroll_offset
+                items_transferred_table:select(selected, false)
             end
         }
     end
@@ -334,6 +349,16 @@ local function createStatisticsTab(tabs)
             headerBackground = colors.red,
             scrollbar = "always"
         })
+
+        local operations_toast = page:addToast({
+            x = "{(parent.width - self.width) / 2}",
+            y = "{parent.height - self.height + 1}",
+            maxWidth = "{parent.width}"
+        })
+        local operations_toast_data = {}
+        operations_table:onSelect(function(self, index)
+            operations_toast:show(operations_toast_data[index])
+        end)
 
         operations_table:sortBy(2, false)
 
@@ -395,6 +420,7 @@ local function createStatisticsTab(tabs)
                 operations_per_second.text = "Operations made: " .. time_format_formatter(latest_operations)
 
                 local table_data = {}
+                operations_toast_data = {}
 
                 for inventory_id in pairs(latest_inventory_operations) do
                     local ops = latest_inventory_operations[inventory_id]
@@ -403,11 +429,14 @@ local function createStatisticsTab(tabs)
                         ops[1],
                         ops[2]
                     })
+                    operations_toast_data[#table_data] = inventory_id .. " x" .. time_format_formatter(ops[1] + ops[2])
                 end
 
                 local scroll_offset = operations_table.offset
+                local selected = operations_table.selected
                 operations_table:setData(table_data, operations_table_formatters)
                 operations_table.offset = scroll_offset
+                operations_table:select(selected, false)
             end
         }
     end
@@ -460,6 +489,16 @@ local function createInventoryTab(mainframe, tabs)
         scrollbar = "always"
     })
 
+    local item_toast = page:addToast({
+        x = "{(parent.width - self.width) / 2}",
+        y = "{parent.height - self.height + 1}",
+        maxWidth = "{parent.width}"
+    })
+    local item_toast_data = {}
+    inventory_table:onSelect(function(self, index)
+        item_toast:show(item_toast_data[index])
+    end)
+
     inventory_table:sortBy(2, false)
 
     local operations_table_formatters = {
@@ -488,8 +527,9 @@ local function createInventoryTab(mainframe, tabs)
             " total items"
 
         local table_data = {}
-
+        item_toast_data = {}
         for item_id, count in pairs(items_counts) do
+            table.insert(item_toast_data, item_id .. " x" .. count)
             table.insert(table_data, {
                 (item_cache.get(item_id) or {}).display_name or item_id,
                 count
@@ -497,8 +537,10 @@ local function createInventoryTab(mainframe, tabs)
         end
 
         local scroll_offset = inventory_table.offset
+        local selected = inventory_table.selected
         inventory_table:setData(table_data, operations_table_formatters)
         inventory_table.offset = scroll_offset
+        inventory_table:select(selected, false)
     end
 
     return { update = update }
