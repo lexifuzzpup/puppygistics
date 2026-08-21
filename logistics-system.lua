@@ -7,7 +7,6 @@ local item_cache = require("item-cache")
 ---@field active_providers table<string, ActiveProviderInventory>
 ---@field requesters table<string, RequesterInventory>
 ---@field inventories table<string, Inventory>
----@field inventory_names string[]
 local LogisticsSystem = {}
 LogisticsSystem.__index = LogisticsSystem
 
@@ -20,7 +19,6 @@ function LogisticsSystem:new()
     new.active_providers = {}
     new.requesters = {}
     new.inventories = {}
-    new.inventory_names = {}
 
     setmetatable(new, self)
 
@@ -217,13 +215,6 @@ end
 function LogisticsSystem:removeInventory(name)
     local inventory = self.inventories[name]
 
-    for i, inventory_name in pairs(self.inventory_names) do
-        if inventory_name == name then
-            table.remove(self.inventory_names, i)
-            break
-        end
-    end
-
     if inventory == nil then return end
     self.inventories[name] = nil
 
@@ -262,7 +253,6 @@ function LogisticsSystem:addInventory(inventory)
     end
 
     self.inventories[inventory.name] = inventory
-    table.insert(self.inventory_names, inventory.name)
 end
 
 return LogisticsSystem

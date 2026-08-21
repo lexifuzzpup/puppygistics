@@ -529,11 +529,13 @@ local function createMembersTab(mainframe, tabs)
         if mainframe.system == nil then return end
 
         local max_peripherals = 256
-        local logistics_members = #mainframe.system.inventory_names
+        local logistics_members = 0
         local non_storage_members = 0
 
         for _, peripheral_name in pairs(peripheral.getNames()) do
-            if not mainframe.system.inventories[peripheral_name] then
+            if mainframe.system.inventories[peripheral_name] then
+                logistics_members = logistics_members + 1
+            else
                 non_storage_members = non_storage_members + 1
             end
         end
