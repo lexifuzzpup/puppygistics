@@ -739,6 +739,28 @@ local function createMembersTab(mainframe, tabs)
         end)
     end)
 
+    local type_order = {
+        unassigned = 0,
+        active_provider = 1,
+        passive_provider = 2,
+        requester = 3,
+        storage = 4,
+    }
+
+    local function sortMembers()
+        local children = list:getChildren()
+        table.sort(children, function(a, b)
+            local card_a = inventory_cards[a.name]
+            local card_b = inventory_cards[b.name]
+
+            if card_a.inventory.type ~= card_b.inventory.type then
+                return type_order[card_a.inventory.type] < type_order[card_b.inventory.type]
+            end
+
+            return card_a.inventory.name < card_b.inventory.name
+        end)
+    end
+
     return {
         addMember = function(initial_inventory)
             local card = {
@@ -813,6 +835,7 @@ local function createMembersTab(mainframe, tabs)
             })
 
             local function setInventoryDetails(name, type)
+                container.name = name
                 inventory_name_label.text = name
 
                 edit_button.visible = false
@@ -1115,6 +1138,7 @@ local function createMembersTab(mainframe, tabs)
             card.container = container
 
             updateMemberCount()
+            sortMembers()
         end,
         updateMember = function(inventory)
             local card = inventory_cards[inventory.name]
@@ -1122,12 +1146,17 @@ local function createMembersTab(mainframe, tabs)
             if card ~= nil then
                 card.update(inventory)
             end
+            sortMembers()
         end,
         removeMember = function(inventory)
             local card = inventory_cards[inventory.name]
-            if card == nil then return end
 
-            card.container:destroy()
+            inventory_cards[card.inventory.name] = nil
+
+            if card ~= nil then
+                card.container:destroy()
+            end
+            sortMembers()
         end,
         update = function()
             updateMemberCount()
