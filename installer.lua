@@ -19,6 +19,7 @@ local files = {
     "dashboard.lua",
     "statistics.lua",
     "semaphore.lua",
+    "mainframe.lua",
 }
 
 print("\n### DOWNLOADING FILES ###")
