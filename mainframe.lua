@@ -220,6 +220,7 @@ function Mainframe:setInventoryType(inventory, type, config)
             self.config.members[inventory.name] = config_entry
         end
         config_entry.type = type
+        config_entry.config = config
 
         self.dashboard.updateMember(new_inventory)
 

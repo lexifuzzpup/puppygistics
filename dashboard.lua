@@ -1080,9 +1080,7 @@ local function createMembersTab(mainframe, tabs)
                                 inventory.config.filter[item_id] = count
                             end
                         end
-                        mainframe.config.members[inventory.name].config = {
-                            filter = inventory.config.filter
-                        }
+                        mainframe.config.members[inventory.name].config = inventory.config
                         mainframe:saveConfig()
                     end)
                 end
