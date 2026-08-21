@@ -502,7 +502,7 @@ local function createMembersTab(mainframe, tabs)
     })
     local selected_label = page:addLabel({
         text = "",
-        x = 2,
+        x = 5,
         y = 2
     })
 
@@ -575,18 +575,38 @@ local function createMembersTab(mainframe, tabs)
         width = basalt.auto()
     })
 
+    local clear_selection_button = page:addButton({
+        x = 1,
+        y = 2,
+        text = "X",
+        background = colors.brown,
+        height = 1,
+        width = 3
+    })
+
     local function updateSelectedCount()
         local count = getSelectedCount()
 
         if count > 0 then
             selected_label.visible = true
             set_selected_type_button.visible = true
+            clear_selection_button.visible = true
             selected_label.text = count .. " selected"
         else
             selected_label.visible = false
+            clear_selection_button.visible = false
             set_selected_type_button.visible = false
         end
     end
+    
+    clear_selection_button:onClick(function()
+        for _, card in pairs(inventory_cards) do
+            if card.selected then
+                card.setSelected(false)
+            end
+        end
+        updateSelectedCount()
+    end)
 
     updateSelectedCount()
 
@@ -766,10 +786,7 @@ local function createMembersTab(mainframe, tabs)
                 end
             end
 
-            icon_top:onClick(function()
-                card.setSelected(not card.selected)
-            end)
-            icon_bottom:onClick(function()
+            container:onClick(function()
                 card.setSelected(not card.selected)
             end)
 
