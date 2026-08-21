@@ -1,13 +1,30 @@
 {
-    "active_providers": {
-        "minecraft:chest_7": {}
-    },
-    "passive_providers": {
-        "minecraft:chest_1": {}
-    },
-    "requesters": {
+    "members": {
+        "minecraft:chest_7": {
+            "type": "active_provider"
+        },
+        "minecraft:chest_1": {
+            "type": "passive_provider"
+        },
         "minecraft:chest_2": {
-            "minecraft:stone": 64
+            "type": "requester",
+            "options": {
+                "filter": {
+                    "minecraft:stone": 64
+                }
+            }
+        },
+        "minecraft:chest_3": {
+            "type": "storage"
+        },
+        "minecraft:chest_4": {
+            "type": "storage"
+        },
+        "minecraft:chest_5": {
+            "type": "storage"
+        },
+        "minecraft:chest_6": {
+            "type": "storage"
         }
     }
 }

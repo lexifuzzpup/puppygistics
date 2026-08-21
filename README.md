@@ -19,34 +19,41 @@ wget run https://raw.githubusercontent.com/lexifuzzpup/puppygistics/refs/heads/m
     * Requires no configuration
 * Requester (`requester`)
     * Will attempt to pull contents from the network. Pulls from active providers first, then passive providers, then finally storage.
-    * Requires desired items to be set. Use an `"item": count` format for configuration.
-
-Any attached storages that are not defined as one of these three types are Storage (`storage`).
-* Neutral inventory. Does not push or pull anything on its own.
-* Requires no configuration
+    * Requires desired items to be set. Use an `"item": count` format for configuration in `options.filter`.
+* Storage (`storage`)
+    * Neutral inventory. Does not push or pull anything on its own.
+    * Requires no configuration
 
 Below is an example of a `puppygistics.json` file:
 ```json
 {
-    "active_providers": {
-        "minecraft:chest_7": {}
-    },
-    "passive_providers": {
-        "minecraft:chest_1": {}
-    },
-    "requesters": {
+    "members": {
+        "minecraft:chest_1": {
+            "type": "active_provider"
+        },
         "minecraft:chest_2": {
-            "minecraft:stone": 64
+            "type": "passive_provider"
+        },
+        "minecraft:chest_3": {
+            "type": "requester",
+            "options": {
+                "filter": {
+                    "minecraft:stone": 64
+                }
+            }
+        },
+        "minecraft:chest_4": {
+            "type": "storage"
         }
     }
 }
 ```
 
-When items are inserted into `minecraft:chest_7`, they will be pushed into the network. If stone is inserted, and `minecraft:chest_2` needs stone, it will be pulled there. Otherwise, it will be inserted into storage.
+When items are inserted into `minecraft:chest_1`, they will be pushed into the network. If stone is inserted, and `minecraft:chest_3` needs stone, it will be pulled there. Otherwise, it will be inserted into storage.
 
-When items are inserted into `minecraft:chest_1`, and `minecraft:chest_2` needs stone (and `minecraft:chest_7` has none), then stone will be moved from `minecraft:chest_1` to `minecraft:chest_2`.
+When items are inserted into `minecraft:chest_2`, and `minecraft:chest_3` needs stone (and `minecraft:chest_4` has none), then stone will be moved from `minecraft:chest_2` to `minecraft:chest_3`.
 
-If `minecraft:chest_2` has less than 64 stone, and it's only available in storage, it will be pulled from the storages sequentially. If it has 64 or more stone, it will not pull any more stone from the network.
+If `minecraft:chest_3` has less than 64 stone, and it's only available in `minecraft:chest_4`, it will be pulled from `minecraft:chest_4`. If it has 64 or more stone, it will not pull any more stone from the network.
 
 ## System Settings
 There are CC-level settings available for the computer. Use the `set <name> <value>` shell command to change them.
@@ -63,24 +70,3 @@ There are CC-level settings available for the computer. Use the `set <name> <val
 * **puppygistics.parallelism** - *number*
     * How many parallel inventory operations to allow
     * Default: 128
-
-## Additional Tips
-Multiple simultaneous systems are supported if you want to separate parts of your network. To define multiple systems, declare a `systems` block in your `puppygistics.json` file containing an array of configurations.
-
-An example, creating two networks:
-```json
-{
-    "systems": [
-        {
-            "passive_providers": [ ... ],
-            "requesters": [ ... ],
-        },
-
-        {
-            "passive_providers": [ ... ],
-            "active_providers": [ ... ],
-            "requesters": [ ... ],
-        }
-    ]
-}
-```
