@@ -444,10 +444,12 @@ local function createInventoryTab(mainframe, tabs)
         local items_counts = {}
 
         for _, inventory in pairs(mainframe.system.inventories) do
-            for item_id, count in pairs(inventory.item_counts) do
-                if count > 0 then
-                    items_counts[item_id] = (items_counts[item_id] or 0) + count
-                    total_items = total_items + count
+            if inventory.type ~= "unassigned" then
+                for item_id, count in pairs(inventory.item_counts) do
+                    if count > 0 then
+                        items_counts[item_id] = (items_counts[item_id] or 0) + count
+                        total_items = total_items + count
+                    end
                 end
             end
         end

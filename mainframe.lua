@@ -18,12 +18,15 @@ local MainframeConfig = {}
 ---@field system LogisticsSystem
 ---@field config_filepath string
 ---@field dashboard table
+---@field dashboard_needs_update boolean
 local Mainframe = {}
 Mainframe.__index = Mainframe
 
 ---@return Mainframe
 function Mainframe:new()
-    local new = {}
+    local new = {
+        dashboard_needs_update = false
+    }
 
     setmetatable(new, self)
 
@@ -229,7 +232,7 @@ function Mainframe:dashboardUpdateLoop()
             statistics.epoch(os.epoch("utc"))
 
             if self.system ~= nil then
-                self.dashboard.update()
+                self.dashboard_needs_update = true
             end
         end
         coroutine.yield()
@@ -271,6 +274,11 @@ function Mainframe:updateLoop()
         if update_number % settings.get("puppygistics.updates.compact") == 0 then
             log.info("Performing automatic storage compaction")
             self:compactSystem()
+        end
+
+        if self.dashboard_needs_update then
+            self.dashboard.update()
+            self.dashboard_needs_update = false
         end
 
         update_number = update_number + 1
