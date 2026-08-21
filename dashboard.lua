@@ -430,7 +430,7 @@ local function createShellTab(tabs)
     program:execute("rom/programs/shell.lua")
 
     tabs:onChange(function()
-        if tabs.active == 3 then
+        if tabs.active == 5 then
             program:focus()
         end
     end)
@@ -627,7 +627,7 @@ local function createMembersTab(mainframe, tabs)
             set_selected_type_button.visible = false
         end
     end
-    
+
     clear_selection_button:onClick(function()
         for _, card in pairs(inventory_cards) do
             if card.selected then
