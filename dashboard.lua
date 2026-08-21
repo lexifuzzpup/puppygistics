@@ -656,10 +656,9 @@ local function createMembersTab(mainframe, tabs)
         })
 
         local selected_count = getSelectedCount()
-        local title_text = "Set type for " .. selected_count .. " inventor" .. (selected_count == 1 and "y" or "ies")
         content:addLabel({
-            text = title_text,
-            x = (30 - #title_text + 1) / 2,
+            text = "Set type for " .. selected_count .. " inventor" .. (selected_count == 1 and "y" or "ies"),
+            x = "{(parent.width - self.width + 1) / 2}",
             y = 2
         })
 
@@ -741,7 +740,7 @@ local function createMembersTab(mainframe, tabs)
     end)
 
     return {
-        addMember = function(inventory)
+        addMember = function(initial_inventory)
             local card = {
                 inventory = nil,
                 container = nil,
@@ -751,7 +750,7 @@ local function createMembersTab(mainframe, tabs)
             }
 
             local container = list:addFrame({
-                width = basalt.fill(),
+                width = "{parent.width - 2}",
                 height = 2,
                 background = false
             })
@@ -763,7 +762,7 @@ local function createMembersTab(mainframe, tabs)
                 foreground = colors.lightGray
             })
 
-            local icon_top = container:addLabel({
+            local icon_top_left = container:addLabel({
                 text = "\131",
                 x = 1,
                 y = 1,
@@ -771,9 +770,25 @@ local function createMembersTab(mainframe, tabs)
                 height = 1,
                 foreground = colors.black,
             })
-            local icon_bottom = container:addLabel({
+            local icon_bottom_left = container:addLabel({
                 text = "\143",
                 x = 1,
+                y = 2,
+                width = 1,
+                height = 1,
+                background = colors.black
+            })
+            local icon_top_right = container:addLabel({
+                text = "\131",
+                x = "{parent.width}",
+                y = 1,
+                width = 1,
+                height = 1,
+                foreground = colors.black,
+            })
+            local icon_bottom_right = container:addLabel({
+                text = "\143",
+                x = "{parent.width}",
                 y = 2,
                 width = 1,
                 height = 1,
@@ -789,34 +804,288 @@ local function createMembersTab(mainframe, tabs)
                 foreground = colors.white
             })
 
+            local edit_button = container:addButton({
+                x = "{parent.width - 5}",
+                y = 1,
+                text = "Edit",
+                width = 4,
+                height = 1
+            })
+
             local function setInventoryDetails(name, type)
                 inventory_name_label.text = name
 
+                edit_button.visible = false
+
                 if type == "storage" then
                     type_label.text = "Storage"
-                    icon_top.background = colors.yellow
-                    icon_bottom.foreground = colors.yellow
+                    icon_top_left.background = colors.yellow
+                    icon_top_right.background = colors.yellow
+                    icon_bottom_left.foreground = colors.yellow
+                    icon_bottom_right.foreground = colors.yellow
                 elseif type == "active_provider" then
                     type_label.text = "Active Provider"
-                    icon_top.background = colors.purple
-                    icon_bottom.foreground = colors.purple
+                    icon_top_left.background = colors.purple
+                    icon_top_right.background = colors.purple
+                    icon_bottom_left.foreground = colors.purple
+                    icon_bottom_right.foreground = colors.purple
                 elseif type == "passive_provider" then
                     type_label.text = "Passive Provider"
-                    icon_top.background = colors.red
-                    icon_bottom.foreground = colors.red
+                    icon_top_left.background = colors.red
+                    icon_top_right.background = colors.red
+                    icon_bottom_left.foreground = colors.red
+                    icon_bottom_right.foreground = colors.red
                 elseif type == "requester" then
                     type_label.text = "Requester"
-                    icon_top.background = colors.blue
-                    icon_bottom.foreground = colors.blue
+                    icon_top_left.background = colors.blue
+                    icon_top_right.background = colors.blue
+                    icon_bottom_left.foreground = colors.blue
+                    icon_bottom_right.foreground = colors.blue
+                    edit_button.visible = true
                 elseif type == "unassigned" then
                     type_label.text = "Unassigned"
-                    icon_top.background = colors.lightGray
-                    icon_bottom.foreground = colors.lightGray
+                    icon_top_left.background = colors.lightGray
+                    icon_top_right.background = colors.lightGray
+                    icon_bottom_left.foreground = colors.lightGray
+                    icon_bottom_right.foreground = colors.lightGray
                 end
+
+                edit_button.disabled = not edit_button.visible
             end
 
             container:onClick(function()
                 card.setSelected(not card.selected)
+            end)
+
+            edit_button:onClick(function()
+                local dialog = page:addFrame({
+                    x = 1,
+                    y = 1,
+                    width = basalt.fill(),
+                    height = basalt.fill()
+                })
+
+                local content = dialog:addFrame({
+                    x = 1,
+                    y = 1,
+                    width = basalt.fill(),
+                    height = basalt.fill(),
+                    background = colors.black
+                })
+
+                content:addLabel({
+                    text = "Edit " .. card.inventory.name,
+                    x = "{(parent.width - self.width + 1) / 2}",
+                    y = 2
+                })
+                content:addLabel({
+                    text = "(" .. card.inventory.type .. ")",
+                    x = "{(parent.width - self.width + 1) / 2}",
+                    y = 3
+                })
+
+                local cancel_button = content:addButton({
+                    text = "Cancel",
+                    x = "{((parent or {}).width or 0) / 2 - 13}",
+                    y = "{((parent or {}).height or 0) - 1}",
+                    width = 12,
+                    height = 1,
+                    background = colors.red
+                })
+
+                local apply_button = content:addButton({
+                    text = "Apply",
+                    x = "{((parent or {}).width or 0) / 2 + 1}",
+                    y = "{((parent or {}).height or 0) - 1}",
+                    width = 12,
+                    height = 1,
+                    background = colors.blue
+                })
+
+                cancel_button:onClick(function()
+                    dialog:destroy()
+                end)
+                apply_button:onClick(function()
+                    dialog:destroy()
+                end)
+
+                if card.inventory.type == "requester" then
+                    ---@type RequesterInventory
+                    local inventory = card.inventory
+
+                    content:addLabel({
+                        text = "Item requests",
+                        x = 3,
+                        y = 5
+                    })
+                    content:addLabel({
+                        x = 3,
+                        y = 6,
+                        text = "Format: namespace:item 1",
+                        foreground = colors.gray
+                    })
+                    local filter_items = content:addList({
+                        x = 2,
+                        y = 7,
+                        width = "{parent.width - 2}",
+                        height = "{parent.height - 9}",
+                        background = colors.gray,
+                        emptyText = "<no items>",
+                        emptyTextColor = colors.lightGray,
+                        scrollbar = "always",
+                    })
+
+                    for item_id, count in pairs(inventory.config.filter) do
+                        filter_items:addItem(item_id .. " " .. count)
+                    end
+
+                    ---@param text string
+                    local function validateLine(text)
+                        local split = text:find(" ")
+                        if split == nil then return false, "", 0 end
+
+                        local item = text:sub(1, split - 1)
+                        local count_str = text:sub(split + 1)
+                        if not #item or not #count_str then return false, "", 0 end
+
+                        local count = tonumber(count_str)
+                        if count == nil or math.floor(count) ~= count then return false, "", 0 end
+
+                        return true, item, count
+                    end
+
+                    local function editLine(index)
+                        filter_items:selectItem(index)
+                        local new = index > #filter_items.items
+
+                        local line_text = new and "" or filter_items.items[index].text
+                        local box = content:addInput({
+                            x = 2,
+                            y = filter_items.y - 1 + index - filter_items.offset,
+                            width = "{parent.width - 3}",
+                            height = 1,
+                            text = line_text,
+
+                            foreground = colors.white,
+                            background = colors.black
+                        })
+
+                        box._cursor = #line_text + 1
+
+                        local committed = false
+                        local function commit()
+                            if committed then return end
+                            committed = true
+
+                            if validateLine(box.text) then
+                                if new then
+                                    if #box.text > 0 then
+                                        filter_items:addItem(box.text)
+                                    end
+                                else
+                                    if #box.text > 0 then
+                                        filter_items.items[index].text = box.text
+                                    else
+                                        filter_items:removeItem(index)
+                                    end
+                                end
+                            elseif #box.text == 0 then
+                                filter_items:removeItem(index)
+                            end
+
+                            box:destroy()
+                            filter_items:off("scroll", commit)
+                        end
+                        local function updateColors()
+                            if #box.text == 0 or validateLine(box.text) then
+                                box.foreground = colors.white
+                            else
+                                box.foreground = colors.red
+                            end
+                        end
+                        updateColors()
+
+                        local delete_next_backspace = #box.text == 0
+                        box:onKey(function(self, key)
+                            log.info(key)
+                            if key == 259 and #box.text == 0 then
+                                if delete_next_backspace then
+                                    commit()
+                                    if filter_items.items[index - 1] then
+                                        editLine(index - 1)
+                                    end
+                                end
+                                delete_next_backspace = true
+                            else
+                                delete_next_backspace = false
+                            end
+
+                            if key == 264 then
+                                if index < #filter_items.items then
+                                    editLine(index + 1)
+                                end
+                            elseif key == 265 then
+                                if index > 1 then
+                                    editLine(index - 1)
+                                end
+                            end
+                        end)
+
+                        box:onChange(updateColors)
+                        box:focus()
+                        box:onBlur(commit)
+                        box:onEnter(function()
+                            if validateLine(box.text) then
+                                commit()
+                                if #box.text > 0 then
+                                    filter_items:insertItem(index + 1, "")
+                                    editLine(index + 1)
+                                end
+                            end
+                        end)
+                        filter_items:onScroll(commit)
+                    end
+
+                    filter_items:onKey(function(self, key)
+                        local selected = filter_items.selected
+                        if type(selected) == "number" then
+                            if key == 261 then
+                                filter_items:removeItem(selected)
+                                filter_items:selectItem(math.min(math.max(selected, 1), #filter_items.items), true)
+                            end
+                            if key == 257 then
+                                editLine(selected)
+                            end
+                        end
+                    end)
+
+                    local last_click = 0
+                    local last_click_y = 0
+                    filter_items:onClick(function(self, button, x, y)
+                        local now = os.clock()
+                        if now - last_click < 0.5 and last_click_y == y + filter_items.offset then
+                            editLine(math.min(y + filter_items.offset, #filter_items.items + 1))
+                        end
+                        last_click = now
+                        last_click_y = y + filter_items.offset
+                    end)
+
+                    apply_button:onClick(function()
+                        for item_id in pairs(inventory.config.filter) do
+                            inventory.config.filter[item_id] = nil
+                        end
+                        for _, item in pairs(filter_items.items) do
+                            local validated, item_id, count = validateLine(item.text)
+                            if validated then
+                                inventory.config.filter[item_id] = count
+                            end
+                        end
+                        mainframe.config.members[inventory.name].config = {
+                            filter = inventory.config.filter
+                        }
+                        mainframe:saveConfig()
+                    end)
+                end
             end)
 
             card.setSelected = function(new_selected)
@@ -835,14 +1104,17 @@ local function createMembersTab(mainframe, tabs)
                 updateSelectedCount()
             end
             card.update = function(new_inventory)
+                if card.inventory ~= nil then
+                    inventory_cards[card.inventory.name] = nil
+                end
                 card.inventory = new_inventory
                 setInventoryDetails(new_inventory.name, new_inventory.type)
+                inventory_cards[initial_inventory.name] = card
             end
 
-            card.update(inventory)
+            card.update(initial_inventory)
 
             card.container = container
-            inventory_cards[inventory.name] = card
 
             updateMemberCount()
         end,
