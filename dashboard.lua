@@ -122,7 +122,7 @@ local function createStatisticsTab(tabs)
     end
 
     page:addLabel({
-        text = "Display statistics for",
+        text = "Display stats for",
         x = 2,
         y = 1,
     })
@@ -134,9 +134,9 @@ local function createStatisticsTab(tabs)
     }
     local time_resolution = resolution_values[1]
     local resolution_dropdown = page:addDropdown({
-        x = 25,
+        x = 20,
         y = 1,
-        width = 18,
+        width = 10,
         text = "",
         dropHeight = #resolution_values,
         items = resolution_names,
@@ -145,6 +145,50 @@ local function createStatisticsTab(tabs)
 
     resolution_dropdown:onChange(function(self, index, item)
         time_resolution = resolution_values[index]
+        update()
+    end)
+
+    page:addLabel({
+        text = "as",
+        x = 31,
+        y = 1,
+    })
+    local time_format_values = {
+        "count", "per_second", "per_minute", "per_hour"
+    }
+    local time_format_names = {
+        "total", "/s", "/m", "/h"
+    }
+    local epoch_span = 1
+    local time_format_formatters = {
+        function(value)
+            return format_number(value)
+        end,
+        function(value)
+            return format_number(value / epoch_span) .. "/s"
+        end,
+        function(value)
+            return format_number(value / epoch_span * 60) .. "/m"
+        end,
+        function(value)
+            return format_number(value / epoch_span * 3600) .. "/h"
+        end
+    }
+    local time_format = time_format_values[1]
+    local time_format_formatter = time_format_formatters[1]
+    local time_format_dropdown = page:addDropdown({
+        x = 34,
+        y = 1,
+        width = 7,
+        text = "",
+        dropHeight = #time_format_values,
+        items = time_format_names,
+    })
+    time_format_dropdown:select(1)
+
+    time_format_dropdown:onChange(function(self, index, item)
+        time_format = time_format_values[index]
+        time_format_formatter = time_format_formatters[index]
         update()
     end)
 
@@ -201,10 +245,7 @@ local function createStatisticsTab(tabs)
         items_transferred_table:sortBy(2, false)
 
         local items_transferred_table_formatters = {
-            [2] = function(value)
-                if time_resolution == math.huge then return format_number(value)
-                else return format_number(value / time_resolution * 60) .. "/m" end
-            end
+            [2] = function(value) return time_format_formatter(value) end
         }
 
         frames.logistics = {
@@ -217,31 +258,28 @@ local function createStatisticsTab(tabs)
 
                 local i = 1
                 local current_epoch = os.epoch("utc")
+                local first_epoch = current_epoch
                 while true do
-                    local epoch = statistics.epochs[#statistics.epochs - i + 1] or {}
+                    local epoch_data = statistics.epochs[#statistics.epochs - i + 1] or {}
 
-                    local sampled_epoch = epoch.time or 0
+                    local sampled_epoch = epoch_data.time or 0
                     if sampled_epoch == 0 then break end
                     if sampled_epoch <= current_epoch - time_resolution * 1000 or sampled_epoch > current_epoch then break end
 
-                    latest_transferred = latest_transferred + epoch.transferred
+                    latest_transferred = latest_transferred + epoch_data.transferred
 
-                    for item_id, count in pairs(epoch.items_transferred) do
+                    for item_id, count in pairs(epoch_data.items_transferred) do
                         latest_items_transferred[item_id] = (latest_items_transferred[item_id] or 0) + count
                     end
+
+                    first_epoch = epoch_data.time
 
                     i = i + 1
                 end
 
-                if time_resolution == math.huge then
-                    transferred_per_second.text =
-                        format_number(latest_transferred) ..
-                        " items transfered"
-                else
-                    transferred_per_second.text =
-                        format_number(latest_transferred / time_resolution * 60) ..
-                        " items transfered / m"
-                end
+                epoch_span = math.max((current_epoch - first_epoch) / 1000, 0.00000001)
+
+                transferred_per_second.text = "Items transfered: " .. time_format_formatter(latest_transferred)
 
                 local table_data = {}
                 for item_id in pairs(latest_items_transferred) do
@@ -300,14 +338,8 @@ local function createStatisticsTab(tabs)
         operations_table:sortBy(2, false)
 
         local operations_table_formatters = {
-            [2] = function(value)
-                if time_resolution == math.huge then return format_number(value)
-                else return format_number(value / time_resolution * 60) .. "/m" end
-            end,
-            [3] = function(value)
-                if time_resolution == math.huge then return format_number(value)
-                else return format_number(value / time_resolution * 60) .. "/m" end
-            end
+            [2] = function(value) return time_format_formatter(value) end,
+            [3] = function(value) return time_format_formatter(value) end
         }
 
         frames.operations = {
@@ -320,19 +352,20 @@ local function createStatisticsTab(tabs)
 
                 local i = 1
                 local current_epoch = os.epoch("utc")
+                local first_epoch = current_epoch
                 while true do
-                    local epoch = statistics.epochs[#statistics.epochs - i + 1] or {}
-                    local sampled_epoch = epoch.time or 0
+                    local epoch_data = statistics.epochs[#statistics.epochs - i + 1] or {}
+                    local sampled_epoch = epoch_data.time or 0
 
                     if sampled_epoch == 0 then break end
                     if sampled_epoch <= current_epoch - time_resolution * 1000 or sampled_epoch > current_epoch then break end
 
-                    latest_operations = latest_operations + epoch.operations
+                    latest_operations = latest_operations + epoch_data.operations
 
                     local inventory_keys = {}
 
-                    local insertions = epoch.insertions
-                    local extractions = epoch.extractions
+                    local insertions = epoch_data.insertions
+                    local extractions = epoch_data.extractions
 
                     for inventory_id in pairs(insertions) do
                         inventory_keys[inventory_id] = true
@@ -352,18 +385,14 @@ local function createStatisticsTab(tabs)
                         op[2] = op[2] + (extractions[inventory_id] or 0)
                     end
 
+                    first_epoch = epoch_data.time
+
                     i = i + 1
                 end
 
-                if time_resolution == math.huge then
-                    operations_per_second.text =
-                        format_number(latest_operations) ..
-                        " operations made"
-                else
-                    operations_per_second.text =
-                        format_number(latest_operations / time_resolution * 60) ..
-                        " operations made / m"
-                end
+                epoch_span = math.max((current_epoch - first_epoch) / 1000, 0.00000001)
+
+                operations_per_second.text = "Operations made: " .. time_format_formatter(latest_operations)
 
                 local table_data = {}
 
