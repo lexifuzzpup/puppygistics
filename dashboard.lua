@@ -1072,7 +1072,6 @@ local function createMembersTab(mainframe, tabs)
 
                         local delete_next_backspace = #box.text == 0
                         box:onKey(function(self, key)
-                            log.info(key)
                             if key == 259 and #box.text == 0 then
                                 if delete_next_backspace then
                                     commit()
