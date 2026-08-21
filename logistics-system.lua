@@ -115,7 +115,7 @@ function LogisticsSystem:pullTo(destination_inventory, item, count)
     return count
 end
 
----@param types table<string, boolean> mask of inventory types to skip
+---@param types table<string, boolean | nil> mask of inventory types to update
 function LogisticsSystem:updateInventories(types)
     local functions = {}
     for _, inventory in pairs(self.inventories) do
@@ -155,13 +155,13 @@ function LogisticsSystem:updateRequesters()
     for name, requester in pairs(self.requesters) do
         log.verbose("Updating requester " .. name)
 
-        for item_id, filter_count in pairs(requester.config.filter) do
+        for item_id, filter_count in pairs(requester.config.filter or {}) do
             local satisfied_count = requester.item_counts[item_id] or 0
             local count = filter_count - satisfied_count
 
             if count > 0 then
                 log.verbose(name .. " requesting " .. item_id .. " (" .. satisfied_count .. "/" .. filter_count .. " satisfied)")
-                
+
                 local item = item_cache.get(item_id)
                 if item ~= nil then
                     table.insert(functions, function()

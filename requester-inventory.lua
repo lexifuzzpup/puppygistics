@@ -12,7 +12,9 @@ RequesterInventory.__index = RequesterInventory
 function RequesterInventory:new(name, config)
     local new = Inventory:new(name, "requester")
 
-    new.config = config
+    new.config = {
+        filter = config.filter or {}
+    }
 
     setmetatable(new, RequesterInventory)
 

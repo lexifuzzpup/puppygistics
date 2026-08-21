@@ -10,7 +10,7 @@ local statistics = require("statistics")
 local createDashboard = require("dashboard")
 
 ---@class MainframeConfig
----@field members table<string, { type: string, options: table | nil }>
+---@field members table<string, { type: string, config: table | nil }>
 local MainframeConfig = {}
 
 ---@class Mainframe
@@ -60,9 +60,9 @@ function Mainframe:loadConfig(filepath)
 
             if member.type == nil then error(path .. ".type cannot be nil") end
 
-            local options_type = type(member.options)
-            if options_type ~= "table" and options_type ~= "nil" then
-                error(path .. ".options must be a table or nil")
+            local config_type = type(member.config)
+            if config_type ~= "table" and config_type ~= "nil" then
+                error(path .. ".config must be a table or nil")
             end
         end
     end)
@@ -130,7 +130,7 @@ function Mainframe:getInventoryType(name, system_config)
         return "unassigned", {}
     end
 
-    return member.type or "unassigned", member.options or {}
+    return member.type or "unassigned", member.config or {}
 end
 
 ---@param name string name of the peripheral
@@ -279,11 +279,15 @@ function Mainframe:updateLoop()
         local success, error_message = pcall(function()
             local offset = 0
             for name in pairs(update_types) do
-                update_types[name] = (update_number + offset) % settings.get("puppygistics.updates." .. name) == 0
+                local interval = settings.get("puppygistics.updates." .. name)
+                update_types[name] = (update_number + offset) % interval == 0
                 offset = offset + 1
             end
 
             self.system:updateInventories(update_types)
+
+            self.system:updateActiveProviders()
+            self.system:updateRequesters()
         end)
 
         if not success then
@@ -307,7 +311,7 @@ function Mainframe:updateLoop()
 
         update_number = update_number + 1
 
-        coroutine.yield()
+        sleep(0.05)
     end
 end
 
