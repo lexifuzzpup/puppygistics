@@ -14,14 +14,27 @@ There are CC-level settings available for the computer. Use the `set <name> <val
     * Logging level for the system.
     * verbose=0, debug=1, info=2, warning=3, error=4, fatal=5
     * Default: 2
+* **puppygistics.updates.active_provider** - *number*
+    * Frequency (in updates) at which active_provider inventories should be re-polled
+    * Default: 1
+* **puppygistics.updates.passive_provider** - *number*
+    * Frequency (in updates) at which passive_provider inventories should be re-polled
+    * Default: 1
 * **puppygistics.updates.storage** - *number*
-    * How many updates should pass before storage contents are updated
+    * Frequency (in updates) at which storage inventories should be re-polled
     * Default: 20
-* **puppygistics.updates.compact** - *number*
-    * How many updates should pass before storage is re-compacted
-    * Default: 1000
+* **puppygistics.updates.requester** - *number*
+    * Frequency (in updates) at which requester inventories should be re-polled
+    * Default: 1
+* **puppygistics.compacting.enabled** - *boolean*
+    * Enables storage compaction on startup and at set intervals
+    * Default: false
+* **puppygistics.compacting.interval** - *number*
+    * How many seconds should pass between storage compactions
+    * Default: 50
 * **puppygistics.parallelism** - *number*
-    * How many parallel inventory operations to allow. More is faster, but has a higher chance to hang the system.
+    * How many parallel inventory operations to allow.
+    * More is faster, but has a higher chance to hang the system.
     * Default: 128
 
 ## Configuration

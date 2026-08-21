@@ -19,13 +19,15 @@ local MainframeConfig = {}
 ---@field config_filepath string
 ---@field dashboard table
 ---@field dashboard_needs_update boolean
+---@field next_compact number
 local Mainframe = {}
 Mainframe.__index = Mainframe
 
 ---@return Mainframe
 function Mainframe:new()
     local new = {
-        dashboard_needs_update = false
+        dashboard_needs_update = false,
+        next_compact = os.clock()
     }
 
     setmetatable(new, self)
@@ -265,28 +267,23 @@ end
 function Mainframe:updateLoop()
     local update_number = 1
     local update_types = {
-        active_provider = true,
-        passive_provider = true,
-        requester = true,
-        storage = false
+        active_provider = false,
+        passive_provider = false,
+        storage = false,
+        requester = false,
     }
 
     while true do
         log.verbose("Updating system @ " .. os.clock() .. "s")
 
         local success, error_message = pcall(function()
-            update_types.storage = update_number % settings.get("puppygistics.updates.storage") == 0
+            local offset = 0
+            for name in pairs(update_types) do
+                update_types[name] = (update_number + offset) % settings.get("puppygistics.updates." .. name) == 0
+                offset = offset + 1
+            end
 
             self.system:updateInventories(update_types)
-
-            parallel.waitForAll(
-                function()
-                    self.system:updateActiveProviders()
-                end,
-                function()
-                    self.system:updateRequesters()
-                end
-            )
         end)
 
         if not success then
@@ -294,9 +291,13 @@ function Mainframe:updateLoop()
             log.error(tostring(error_message))
         end
 
-        if update_number % settings.get("puppygistics.updates.compact") == 0 then
-            log.info("Performing automatic storage compaction")
-            self:compactSystem()
+        if self.next_compact < os.clock() then
+            self.next_compact = math.max(os.clock(), self.next_compact + settings.get("puppygistics.compacting.interval"))
+
+            if settings.get("puppygistics.compacting.enabled") then
+                log.info("Performing automatic storage compaction")
+                self:compactSystem()
+            end
         end
 
         if self.dashboard_needs_update then
@@ -305,6 +306,8 @@ function Mainframe:updateLoop()
         end
 
         update_number = update_number + 1
+
+        coroutine.yield()
     end
 end
 
@@ -329,18 +332,24 @@ end
 function Mainframe:startSystem()
     log.info("Adding attached inventories")
     local functions = {}
+    local completed_count = 0
     for _, name in pairs(peripheral.getNames()) do
         if peripheral.hasType(name, "inventory") then
             table.insert(functions, function ()
                 self:addPeripheral(name)
+                completed_count = completed_count + 1
+                log.debug("Added peripheral " .. completed_count .. "/" .. #functions)
             end)
         end
     end
 
     parallel.waitForAll(table.unpack(functions))
 
-    log.info("Performing startup storage compaction")
-    local success = self:compactSystem()
+    local success = true
+    if settings.get("puppygistics.compacting.enabled") then
+        log.info("Performing startup storage compaction")
+        success = success and self:compactSystem()
+    end
 
     if not success then
         log.fatal("Failed to start system")

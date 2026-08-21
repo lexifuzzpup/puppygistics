@@ -8,18 +8,38 @@ settings.define("logging.level", {
     default = 2,
     type = "number"
 })
+settings.define("puppygistics.updates.active_provider", {
+    description = "Frequency (in updates) at which active_provider inventories should be re-polled",
+    default = 1,
+    type = "number"
+})
+settings.define("puppygistics.updates.passive_provider", {
+    description = "Frequency (in updates) at which passive_provider inventories should be re-polled",
+    default = 1,
+    type = "number"
+})
 settings.define("puppygistics.updates.storage", {
-    description = "How many updates should pass before storage contents are updated",
+    description = "Frequency (in updates) at which storage inventories should be re-polled",
     default = 20,
     type = "number"
 })
-settings.define("puppygistics.updates.compact", {
-    description = "How many updates should pass before storage is re-compacted.",
-    default = 1000,
+settings.define("puppygistics.updates.requester", {
+    description = "Frequency (in updates) at which requester inventories should be re-polled",
+    default = 1,
     type = "number"
 })
+settings.define("puppygistics.compacting.interval", {
+    description = "How many seconds should pass between storage compactions",
+    default = 60,
+    type = "number"
+})
+settings.define("puppygistics.compacting.enabled", {
+    description = "Enables storage compaction on startup and at set intervals",
+    default = false,
+    type = "boolean"
+})
 settings.define("puppygistics.parallelism", {
-    description = "How many parallel inventory operations to allow",
+    description = "How many parallel inventory operations to allow.",
     default = 128,
     type = "number"
 })
