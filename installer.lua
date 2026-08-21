@@ -8,9 +8,11 @@ local prefix = "https://raw.githubusercontent.com/lexifuzzpup/puppygistics/refs/
 local files = {
     "inventory.lua",
     "item-cache.lua",
-    "json.lua",
     "log.lua",
     "logistics-system.lua",
+    "active-provider-inventory.lua",
+    "passive-provider-inventory.lua",
+    "storage-inventory.lua",
     "requester-inventory.lua",
     "startup.lua",
     "puppygistics.example.json",

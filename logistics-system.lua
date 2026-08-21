@@ -2,13 +2,12 @@ local log = require("log")
 local item_cache = require("item-cache")
 
 ---@class LogisticsSystem
----@field storages {}
----@field passive_providers {}
----@field active_providers {}
----@field requesters {}
+---@field storages table<string, StorageInventory>
+---@field passive_providers table<string, PassiveProviderInventory>
+---@field active_providers table<string, ActiveProviderInventory>
+---@field requesters table<string, RequesterInventory>
 ---@field inventories table<string, Inventory>
 ---@field inventory_names string[]
----@field inventory_types table<Inventory, "active_provider" | "passive_provider" | "storage" | "requester">
 local LogisticsSystem = {}
 LogisticsSystem.__index = LogisticsSystem
 
@@ -22,7 +21,6 @@ function LogisticsSystem:new()
     new.requesters = {}
     new.inventories = {}
     new.inventory_names = {}
-    new.inventory_types = {}
 
     setmetatable(new, self)
 
@@ -119,11 +117,11 @@ function LogisticsSystem:pullTo(destination_inventory, item, count)
     return count
 end
 
----@param types table<string, true> bag of inventory types to skip
+---@param types table<string, boolean> mask of inventory types to skip
 function LogisticsSystem:updateInventories(types)
     local functions = {}
-    for inventory, type in pairs(self.inventory_types) do
-        if types[type] then
+    for _, inventory in pairs(self.inventories) do
+        if types[inventory.type] then
             table.insert(functions, function()
                 inventory:updateCache()
             end)
@@ -159,7 +157,7 @@ function LogisticsSystem:updateRequesters()
     for name, requester in pairs(self.requesters) do
         log.verbose("Updating requester " .. name)
 
-        for item_id, filter_count in pairs(requester.filter) do
+        for item_id, filter_count in pairs(requester.config.filter) do
             local satisfied_count = requester.item_counts[item_id] or 0
             local count = filter_count - satisfied_count
 
@@ -215,7 +213,7 @@ function LogisticsSystem:compactStorage()
 end
 
 ---@param name string
----@return Inventory | nil, "active_provider" | "passive_provider" | "storage" | "requester" | nil
+---@return Inventory | nil
 function LogisticsSystem:removeInventory(name)
     local inventory = self.inventories[name]
 
@@ -229,8 +227,7 @@ function LogisticsSystem:removeInventory(name)
     if inventory == nil then return end
     self.inventories[name] = nil
 
-    local type = self.inventory_types[inventory]
-    self.inventory_types[inventory] = nil
+    local type = inventory.type
 
     if type == "active_provider" then
         self.active_providers[name] = nil
@@ -242,24 +239,29 @@ function LogisticsSystem:removeInventory(name)
         self.requesters[name] = nil
     end
 
-    return inventory, type
+    return inventory
 end
 
 ---@param inventory Inventory
----@param type "active_provider" | "passive_provider" | "storage" | "requester"
-function LogisticsSystem:addInventory(inventory, type)
-    if type == "active_provider" then
+function LogisticsSystem:addInventory(inventory)
+    if inventory.type == "active_provider" then
+        ---@cast inventory ActiveProviderInventory
         self.active_providers[inventory.name] = inventory
-    elseif type == "passive_provider" then
+
+    elseif inventory.type == "passive_provider" then
+        ---@cast inventory PassiveProviderInventory
         self.passive_providers[inventory.name] = inventory
-    elseif type == "storage" then
+
+    elseif inventory.type == "storage" then
+        ---@cast inventory StorageInventory
         self.storages[inventory.name] = inventory
-    elseif type == "requester" then
+
+    elseif inventory.type == "requester" then
+        ---@cast inventory RequesterInventory
         self.requesters[inventory.name] = inventory
     end
 
     self.inventories[inventory.name] = inventory
-    self.inventory_types[inventory] = type
     table.insert(self.inventory_names, inventory.name)
 end
 

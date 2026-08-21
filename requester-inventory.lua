@@ -1,37 +1,27 @@
 local Inventory = require("inventory")
 
 ---@class RequesterInventory : Inventory
----@field filter table<string, integer>
+---@field config { filter: table<string, integer> }
 local RequesterInventory = {}
 setmetatable(RequesterInventory, { __index = Inventory })
 RequesterInventory.__index = RequesterInventory
 
 ---@param name string peripheral name for the inventory
+---@param config table config for the logistics network member
 ---@return RequesterInventory
-function RequesterInventory:new(name, item_cache)
-    local new = Inventory:new(name)
+function RequesterInventory:new(name, config)
+    local new = Inventory:new(name, "requester")
 
-    new.filter = {}
+    new.config = config
 
     setmetatable(new, RequesterInventory)
 
     return new
 end
 
----@param item_id string namespaced id of the item
----@param count integer how much to keep of the item
-function RequesterInventory:addFilterItem(item_id, count)
-    self.filter[item_id] = count
-end
-
----@param item ItemDetail item_cache details for the item
-function RequesterInventory:supportsItem(item)
-    return self.filter[item.name] ~= nil
-end
-
 function RequesterInventory:pullFrom(remote, item, count)
     local satisfied_count = self.item_counts[item.name] or 0
-    local filter_count = self.filter[item.name] or 0
+    local filter_count = self.config.filter[item.name] or 0
 
     local pull_count = math.max(0, filter_count - satisfied_count)
     local new_count = Inventory.pullFrom(self, remote, item, pull_count)

@@ -4,6 +4,23 @@ local log = {}
 function log.log(level, text)
     if level < settings.get("logging.level") then return end
 
+    if type(text) == "table" then
+        local success, serialized = pcall(textutils.serialize, text)
+        if success then
+            text = serialized
+        else
+            local manual = "{\n"
+
+            for k, v in pairs(text) do
+                manual = manual .. k .. " = <" .. type(v) .. ">\n"
+            end
+
+            text = manual .. "}"
+        end
+    else
+        text = tostring(text)
+    end
+
     for _, callback in pairs(log_handlers) do
         local success, error = pcall(callback, level, text)
 

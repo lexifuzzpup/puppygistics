@@ -3,6 +3,7 @@ local item_cache = require("item-cache")
 local statistics = require("statistics")
 
 ---@class Inventory
+---@field type string logistics type of the inventory
 ---@field name string name of the peripheral
 ---@field interface table | nil underlying peripheral
 ---@field item_counts table<string, integer> item count cache
@@ -14,9 +15,10 @@ local Inventory = {}
 Inventory.__index = Inventory
 
 ---@param name string peripheral name for the inventory
-function Inventory:new(name)
+function Inventory:new(name, type)
     local new = {}
 
+    new.type = type
     new.name = name
     new.interface = peripheral.wrap(name)
     new.item_counts = {}

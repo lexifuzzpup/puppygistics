@@ -407,7 +407,8 @@ local function createShellTab(tabs)
     end)
 end
 
-local function createInventoryTab(tabs)
+---@param mainframe Mainframe
+local function createInventoryTab(mainframe, tabs)
     local page = tabs:addTab("Inventory")
 
     local function update() end
@@ -438,14 +439,11 @@ local function createInventoryTab(tabs)
         end
     }
 
-    ---@param system LogisticsSystem|nil
-    update = function(system)
-        if system == nil then return end
-
+    update = function()
         local total_items = 0
         local items_counts = {}
 
-        for _, inventory in pairs(system.inventories) do
+        for _, inventory in pairs(mainframe.system.inventories) do
             for item_id, count in pairs(inventory.item_counts) do
                 if count > 0 then
                     items_counts[item_id] = (items_counts[item_id] or 0) + count
@@ -475,7 +473,8 @@ local function createInventoryTab(tabs)
     return { update = update }
 end
 
-local function createMembersTab(tabs)
+---@param mainframe Mainframe
+local function createMembersTab(mainframe, tabs)
     local page = tabs:addTab("Members")
 
     local total_members_progress_bar = page:addProgressBar({
@@ -499,27 +498,40 @@ local function createMembersTab(tabs)
         x = 2,
         y = 1
     })
+    local selected_label = page:addLabel({
+        text = "",
+        x = 2,
+        y = 2
+    })
 
     local list = page:addColumn({
-        x = 1,
-        y = 2,
+        x = 2,
+        y = 3,
         width = basalt.fill(),
-        height = basalt.fill(),
+        height = "{parent.height - 3}",
         scrollable = true,
-        gap = 1,
         background = colors.black
     })
 
-    local containers = {}
+    local toolbar = page:addRow({
+        x = 1,
+        y = "{parent.height}",
+        width = basalt.fill(),
+        height = 1,
+        background = colors.gray
+    })
 
-    ---@param system LogisticsSystem
-    local function updateMemberCount(system)
+    local inventory_cards = {}
+
+    local function updateMemberCount()
+        if mainframe.system == nil then return end
+
         local max_peripherals = 256
-        local logistics_members = #system.inventory_names
+        local logistics_members = #mainframe.system.inventory_names
         local non_storage_members = 0
 
         for _, peripheral_name in pairs(peripheral.getNames()) do
-            if not system.inventories[peripheral_name] then
+            if not mainframe.system.inventories[peripheral_name] then
                 non_storage_members = non_storage_members + 1
             end
         end
@@ -542,68 +554,269 @@ local function createMembersTab(tabs)
         end
     end
 
-    return {
-        addMember = function(system, inventory, type)
-            local type_name = ""
-            local type_color = colors.black
-
-            if type == "storage" then
-                type_name = "Storage"
-                type_color = colors.yellow
-            elseif type == "active_provider" then
-                type_name = "Active Provider"
-                type_color = colors.purple
-            elseif type == "passive_provider" then
-                type_name = "Passive Provider"
-                type_color = colors.red
-            elseif type == "requester" then
-                type_name = "Requester"
-                type_color = colors.blue
-            elseif type == "unassigned" then
-                type_name = "Unassigned"
-                type_color = colors.lightGray
+    local function getSelectedCount()
+        local count = 0
+        for _, card in pairs(inventory_cards) do
+            if card.selected then
+                count = count + 1
             end
+        end
+        return count
+    end
+
+    local set_selected_type_button = toolbar:addButton({
+        text = "Set Type",
+        background = colors.red,
+        height = 1,
+        width = basalt.auto()
+    })
+
+    local function updateSelectedCount()
+        local count = getSelectedCount()
+
+        if count > 0 then
+            selected_label.visible = true
+            set_selected_type_button.visible = true
+            selected_label.text = count .. " selected"
+        else
+            selected_label.visible = false
+            set_selected_type_button.visible = false
+        end
+    end
+
+    updateSelectedCount()
+
+    set_selected_type_button:onClick(function()
+        local dialog = page:addFrame({
+            x = 1,
+            y = 1,
+            width = basalt.fill(),
+            height = basalt.fill(),
+            background = false
+        })
+
+        local content = dialog:addFrame({
+            x = "{(parent.width - 30) / 2}",
+            y = "{(parent.height - 8) / 2}",
+            width = 30,
+            height = 8,
+        })
+
+        local selected_count = getSelectedCount()
+        local title_text = "Set type for " .. selected_count .. " inventor" .. (selected_count == 1 and "y" or "ies")
+        content:addLabel({
+            text = title_text,
+            x = (30 - #title_text + 1) / 2,
+            y = 2
+        })
+
+        local type_values = {
+            "unassigned",
+            "active_provider",
+            "passive_provider",
+            "storage",
+            "requester"
+        }
+        local type_names = {
+            "Unassigned",
+            "Active Provider",
+            "Passive Provider",
+            "Storage",
+            "Requester"
+        }
+
+        local type_dropdown = page:addDropdown({
+            x = "{(parent.width - 30) / 2 + 5}",
+            y = "{(parent.height - 8) / 2 + 3}",
+            width = 20,
+            dropHeight = #type_values,
+            items = type_names,
+            background = colors.black,
+            dropBackground = colors.blue
+        })
+
+        local new_type = ""
+        type_dropdown:onChange(function(self, index, item)
+            new_type = type_values[index]
+        end)
+
+        type_dropdown:select(1)
+
+
+        local cancel_button = content:addButton({
+            text = "Cancel",
+            x = 3,
+            y = 7,
+            width = 12,
+            height = 1,
+            background = colors.red
+        })
+        cancel_button:onClick(function()
+            dialog:destroy()
+            type_dropdown:destroy()
+        end)
+
+        local set_button = content:addButton({
+            text = "Set",
+            x = 17,
+            y = 7,
+            width = 12,
+            height = 1,
+            background = colors.blue
+        })
+
+        set_button:onClick(function()
+            dialog:destroy()
+            type_dropdown:destroy()
+
+            local callbacks = {}
+            for _, card in pairs(inventory_cards) do
+                if card.selected then
+                    card.setSelected(false)
+
+                    table.insert(callbacks, function()
+                        mainframe:setInventoryType(card.inventory, new_type, {})
+                    end)
+                end
+            end
+
+            parallel.waitForAll(table.unpack(callbacks))
+            mainframe:saveConfig()
+
+            updateSelectedCount()
+        end)
+    end)
+
+    return {
+        addMember = function(inventory)
+            local card = {
+                inventory = nil,
+                container = nil,
+                setSelected = function(new_selected) end,
+                update = function(new_inventory) end,
+                selected = false
+            }
 
             local container = list:addFrame({
                 width = basalt.fill(),
                 height = 2,
                 background = false
             })
-            container:addFrame({
-                x = 1,
-                y = 1,
-                width = 1,
-                height = basalt.fill(),
-                background = type_color
-            })
-            container:addLabel({
-                text = inventory.name,
-                x = 3,
-                y = 1,
-                width = basalt.fill(),
-                height = 1
-            })
-            container:addLabel({
-                text = type_name,
+
+            local type_label = container:addLabel({
+                text = "",
                 x = 3,
                 y = 2,
                 foreground = colors.lightGray
             })
 
-            table.insert(containers, container)
+            local icon_top = container:addLabel({
+                text = "\131",
+                x = 1,
+                y = 1,
+                width = 1,
+                height = 1,
+                foreground = colors.black,
+            })
+            local icon_bottom = container:addLabel({
+                text = "\143",
+                x = 1,
+                y = 2,
+                width = 1,
+                height = 1,
+                background = colors.black
+            })
 
-            updateMemberCount(system)
-        end,
-        removeMember = function(system, name, type)
+            local inventory_name_label = container:addLabel({
+                text = "",
+                x = 3,
+                y = 1,
+                width = basalt.fill(),
+                height = 1,
+                foreground = colors.white
+            })
 
+            local function setInventoryDetails(name, type)
+                inventory_name_label.text = name
+
+                if type == "storage" then
+                    type_label.text = "Storage"
+                    icon_top.background = colors.yellow
+                    icon_bottom.foreground = colors.yellow
+                elseif type == "active_provider" then
+                    type_label.text = "Active Provider"
+                    icon_top.background = colors.purple
+                    icon_bottom.foreground = colors.purple
+                elseif type == "passive_provider" then
+                    type_label.text = "Passive Provider"
+                    icon_top.background = colors.red
+                    icon_bottom.foreground = colors.red
+                elseif type == "requester" then
+                    type_label.text = "Requester"
+                    icon_top.background = colors.blue
+                    icon_bottom.foreground = colors.blue
+                elseif type == "unassigned" then
+                    type_label.text = "Unassigned"
+                    icon_top.background = colors.lightGray
+                    icon_bottom.foreground = colors.lightGray
+                end
+            end
+
+            icon_top:onClick(function()
+                card.setSelected(not card.selected)
+            end)
+            icon_bottom:onClick(function()
+                card.setSelected(not card.selected)
+            end)
+
+            card.setSelected = function(new_selected)
+                card.selected = new_selected
+
+                if new_selected then
+                    container.background = colors.white
+                    inventory_name_label.foreground = colors.black
+                    type_label.foreground = colors.gray
+                else
+                    container.background = false
+                    inventory_name_label.foreground = colors.white
+                    type_label.foreground = colors.lightGray
+                end
+
+                updateSelectedCount()
+            end
+            card.update = function(new_inventory)
+                card.inventory = new_inventory
+                setInventoryDetails(new_inventory.name, new_inventory.type)
+            end
+
+            card.update(inventory)
+
+            card.container = container
+            inventory_cards[inventory.name] = card
+
+            updateMemberCount()
         end,
-        update = function(system)
-            updateMemberCount(system)
+        updateMember = function(inventory)
+            local card = inventory_cards[inventory.name]
+
+            if card ~= nil then
+                card.update(inventory)
+            end
+        end,
+        removeMember = function(inventory)
+            local card = inventory_cards[inventory.name]
+            if card == nil then return end
+
+            card.container:destroy()
+        end,
+        update = function()
+            updateMemberCount()
         end
     }
 end
 
-return function(frame)
+---@param mainframe Mainframe
+return function(mainframe, frame)
     local tabs = frame:addTabControl({
         x = 1,
         y = 1,
@@ -611,29 +824,26 @@ return function(frame)
         height = basalt.fill(),
     })
 
-    ---@type LogisticsSystem
-    local system = nil
-
     local logsTab = createLogsTab(tabs)
     local statisticsTab = createStatisticsTab(tabs)
-    local inventoryTab = createInventoryTab(tabs)
-    local membersTab = createMembersTab(tabs)
+    local inventoryTab = createInventoryTab(mainframe, tabs)
+    local membersTab = createMembersTab(mainframe, tabs)
     local shellTab = createShellTab(tabs)
 
     return {
         update = function()
             statisticsTab.update()
-            inventoryTab.update(system)
-            membersTab.update(system)
+            inventoryTab.update()
+            membersTab.update()
         end,
-        setSystem = function(new_system)
-            system = new_system
+        addMember = function(inventory)
+            membersTab.addMember(inventory)
         end,
-        addMember = function(inventory, type)
-            membersTab.addMember(system, inventory, type)
+        removeMember = function(inventory)
+            membersTab.removeMember(inventory)
         end,
-        removeMember = function(name, type)
-            membersTab.addMember(system, name, type)
+        updateMember = function(inventory)
+            membersTab.updateMember(inventory)
         end
     }
 end
